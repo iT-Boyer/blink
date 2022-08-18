@@ -60,6 +60,7 @@ NSString *__iCloudsDriveDocumentsPath = nil;
 }
 
 + (NSString *)groupContainerPath {
+  return  [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
   if (__groupContainerPath == nil) {
 
     NSString *groupID = [XCConfig infoPlistFullGroupID];

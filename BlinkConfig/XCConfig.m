@@ -56,7 +56,7 @@
 }
 
 + (NSString *) infoPlistGroupID {
-  return [self _valueForKey:@"BLINK_GROUP_ID"];
+  return @"com.jinher.iBlink2";//[self _valueForKey:@"BLINK_GROUP_ID"];
 }
 
 + (NSString *) infoPlistFullGroupID {
