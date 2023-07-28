@@ -31,7 +31,7 @@ compress, uncompress, gzip, gunzip,
 
 * You can call commands individually, or use small scripts using python or lua. There is redirection (">", "<", "&>" ...), but no pipe. 
 
-All these commands are inside the `ios_system.framework` (precompiled, for facility). If you want to edit the source (to add more commands), see: https://github.com/holzschu/ios_system . 
+All these commands are inside the `ios_system.framework` (precompiled, for facility). If you want to edit the source (to add more commands), see: https://github.com/holzschu/ios_system. 
 
 curl opens access to file transfers to and from your iPad (ftp, http, scp, sftp...). It uses the key management of BLINKSHELL  (the keys you created with "config"). You can also specify keys with a path:
 ```
@@ -75,6 +75,8 @@ We can't wait to receive your valuable feedback. Enjoy!
 ![CI](https://github.com/blinksh/blink/workflows/CI/badge.svg)
 
 We made a ton easier to build and install Blink yourself on your iOS devices through XCode. We provide a precompiled package with all the libraries for the master branch. Here are the steps:
+
+0. Check `xcode-select -p` is pointing to Xcode.app (`/Applications/Xcode.app/Contents/Developer`) not command tools.
 
 1. Run the following command:
 ```bash
