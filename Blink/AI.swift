@@ -32,6 +32,7 @@
 
 import Foundation
 import UIKit
+import SwiftUI
 
 fileprivate extension UIView {
   func setRecursiveBg(color: UIColor) {
@@ -465,6 +466,11 @@ class AIManager {
       return
     }
     
+    //TODO: push 一个 swiftui 页面
+    let vc = UIHostingController(rootView: WhisperView())
+    spaceCtrl.show(vc, sender: nil)
+    return
+    //在界面中添加view
     shared._spaceCtrl = spaceCtrl
     
     let safeFrame = spaceCtrl.safeFrame

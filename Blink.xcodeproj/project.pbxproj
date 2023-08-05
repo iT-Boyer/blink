@@ -82,6 +82,15 @@
 		98E7D0E4263971C000758CF9 /* BlinkFiles.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 07FABBAF25C9AECF00E1CC2C /* BlinkFiles.framework */; };
 		B37F43302A7DE2710038F155 /* AI.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37F432F2A7DE2710038F155 /* AI.swift */; };
 		B37F43322A7DE2920038F155 /* ai.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37F43312A7DE2920038F155 /* ai.swift */; };
+		B37F43392A7DEDE60038F155 /* whisper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B37F43372A7DEDE60038F155 /* whisper.cpp */; };
+		B37F433A2A7DEDE60038F155 /* ggml.c in Sources */ = {isa = PBXBuildFile; fileRef = B37F43382A7DEDE60038F155 /* ggml.c */; };
+		B37F433E2A7DEE2A0038F155 /* LibWhisper.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37F433C2A7DEE2A0038F155 /* LibWhisper.swift */; };
+		B37F434E2A7DEF6D0038F155 /* Recorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37F434C2A7DEF6C0038F155 /* Recorder.swift */; };
+		B37F434F2A7DEF6D0038F155 /* RiffWaveUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37F434D2A7DEF6D0038F155 /* RiffWaveUtils.swift */; };
+		B37F43512A7DEF8A0038F155 /* WhisperState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37F43502A7DEF8A0038F155 /* WhisperState.swift */; };
+		B37F43532A7DEFB10038F155 /* WhisperView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37F43522A7DEFB10038F155 /* WhisperView.swift */; };
+		B37F43562A7DF7A70038F155 /* models in Resources */ = {isa = PBXBuildFile; fileRef = B37F43552A7DF7A60038F155 /* models */; };
+		B37F43582A7DF7C40038F155 /* samples in Resources */ = {isa = PBXBuildFile; fileRef = B37F43572A7DF7C40038F155 /* samples */; };
 		B700AED81DD0F2C200100EBF /* CloudKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B700AED71DD0F2C200100EBF /* CloudKit.framework */; };
 		B75112CD1DE4A7B10040C693 /* BKiCloudConfigurationViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = B75112CC1DE4A7B10040C693 /* BKiCloudConfigurationViewController.m */; };
 		B752EE2B1DFEF19D00E305C8 /* BKUserConfigurationManager.m in Sources */ = {isa = PBXBuildFile; fileRef = B752EE2A1DFEF19D00E305C8 /* BKUserConfigurationManager.m */; };
@@ -729,6 +738,18 @@
 		98E7D0BD2638B46400758CF9 /* BlinkItemReference.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlinkItemReference.swift; sourceTree = "<group>"; };
 		B37F432F2A7DE2710038F155 /* AI.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AI.swift; sourceTree = "<group>"; };
 		B37F43312A7DE2920038F155 /* ai.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ai.swift; sourceTree = "<group>"; };
+		B37F43352A7DEDE60038F155 /* ggml.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ggml.h; path = ../whisper.cpp/ggml.h; sourceTree = "<group>"; };
+		B37F43362A7DEDE60038F155 /* whisper.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = whisper.h; path = ../whisper.cpp/whisper.h; sourceTree = "<group>"; };
+		B37F43372A7DEDE60038F155 /* whisper.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = whisper.cpp; path = ../whisper.cpp/whisper.cpp; sourceTree = "<group>"; };
+		B37F43382A7DEDE60038F155 /* ggml.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = ggml.c; path = ../whisper.cpp/ggml.c; sourceTree = "<group>"; };
+		B37F433C2A7DEE2A0038F155 /* LibWhisper.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LibWhisper.swift; sourceTree = "<group>"; };
+		B37F433D2A7DEE2A0038F155 /* WhisperCppDemo-Bridging-Header.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "WhisperCppDemo-Bridging-Header.h"; sourceTree = "<group>"; };
+		B37F434C2A7DEF6C0038F155 /* Recorder.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Recorder.swift; sourceTree = "<group>"; };
+		B37F434D2A7DEF6D0038F155 /* RiffWaveUtils.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RiffWaveUtils.swift; sourceTree = "<group>"; };
+		B37F43502A7DEF8A0038F155 /* WhisperState.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WhisperState.swift; sourceTree = "<group>"; };
+		B37F43522A7DEFB10038F155 /* WhisperView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WhisperView.swift; sourceTree = "<group>"; };
+		B37F43552A7DF7A60038F155 /* models */ = {isa = PBXFileReference; lastKnownFileType = folder; path = models; sourceTree = "<group>"; };
+		B37F43572A7DF7C40038F155 /* samples */ = {isa = PBXFileReference; lastKnownFileType = folder; path = samples; sourceTree = "<group>"; };
 		B700AED71DD0F2C200100EBF /* CloudKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CloudKit.framework; path = System/Library/Frameworks/CloudKit.framework; sourceTree = SDKROOT; };
 		B75112CB1DE4A7B10040C693 /* BKiCloudConfigurationViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BKiCloudConfigurationViewController.h; sourceTree = "<group>"; };
 		B75112CC1DE4A7B10040C693 /* BKiCloudConfigurationViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = BKiCloudConfigurationViewController.m; sourceTree = "<group>"; };
@@ -1487,6 +1508,51 @@
 			path = Models;
 			sourceTree = "<group>";
 		};
+		B37F43342A7DEDC00038F155 /* Whisper.cpp */ = {
+			isa = PBXGroup;
+			children = (
+				B37F43382A7DEDE60038F155 /* ggml.c */,
+				B37F43352A7DEDE60038F155 /* ggml.h */,
+				B37F43372A7DEDE60038F155 /* whisper.cpp */,
+				B37F43362A7DEDE60038F155 /* whisper.h */,
+				B37F433B2A7DEE2A0038F155 /* whisper.cpp.swift */,
+				B37F434B2A7DEF3D0038F155 /* Demo */,
+				B37F433F2A7DEECF0038F155 /* Resources */,
+			);
+			name = Whisper.cpp;
+			sourceTree = "<group>";
+		};
+		B37F433B2A7DEE2A0038F155 /* whisper.cpp.swift */ = {
+			isa = PBXGroup;
+			children = (
+				B37F433C2A7DEE2A0038F155 /* LibWhisper.swift */,
+				B37F433D2A7DEE2A0038F155 /* WhisperCppDemo-Bridging-Header.h */,
+			);
+			name = whisper.cpp.swift;
+			path = ../whisper.cpp/examples/whisper.swiftui/whisper.cpp.swift;
+			sourceTree = "<group>";
+		};
+		B37F433F2A7DEECF0038F155 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				B37F43572A7DF7C40038F155 /* samples */,
+				B37F43552A7DF7A60038F155 /* models */,
+			);
+			name = Resources;
+			path = ../whisper.cpp/examples/whisper.swiftui/whisper.swiftui.demo/Resources;
+			sourceTree = "<group>";
+		};
+		B37F434B2A7DEF3D0038F155 /* Demo */ = {
+			isa = PBXGroup;
+			children = (
+				B37F43522A7DEFB10038F155 /* WhisperView.swift */,
+				B37F43502A7DEF8A0038F155 /* WhisperState.swift */,
+				B37F434C2A7DEF6C0038F155 /* Recorder.swift */,
+				B37F434D2A7DEF6D0038F155 /* RiffWaveUtils.swift */,
+			);
+			path = Demo;
+			sourceTree = "<group>";
+		};
 		B75112C71DE4A7680040C693 /* UserConfiguration */ = {
 			isa = PBXGroup;
 			children = (
@@ -2029,6 +2095,7 @@
 			children = (
 				D23FFC69261C2D46003E9227 /* template_setup.xcconfig */,
 				D27D01232615F1BD00128C23 /* developer_setup.xcconfig */,
+				B37F43342A7DEDC00038F155 /* Whisper.cpp */,
 				D2C243F7238E44960082C69C /* KB */,
 				C9B2E0031D6B612300B89F69 /* Settings */,
 				D265FBBB2317DD3C0017EAC4 /* BlinkTests */,
@@ -2649,6 +2716,7 @@
 				D21A3FE321943BE200269705 /* dark-notification-ipad-20pt@2x.png in Resources */,
 				D27D01272615F1BD00128C23 /* developer_setup.xcconfig in Resources */,
 				07E3AED31D919272007BC086 /* css in Resources */,
+				B37F43562A7DF7A70038F155 /* models in Resources */,
 				D21A3FDD21943BE200269705 /* dark-settings-iphone-29pt@2x.png in Resources */,
 				D21A3FDF21943BE200269705 /* dark-app-ipad-pro-83.5pt@2x.png in Resources */,
 				D21A3FDE21943BE200269705 /* dark-app-ipad-76pt.png in Resources */,
@@ -2675,6 +2743,7 @@
 				D21A3FDA21943BE200269705 /* dark-app-iphone-60pt@2x.png in Resources */,
 				D21A3FDC21943BE200269705 /* dark-app-iphone-60pt@3x.png in Resources */,
 				D21A3FE521943BE200269705 /* dark-spotlight-iphone-40pt@2x.png in Resources */,
+				B37F43582A7DF7C40038F155 /* samples in Resources */,
 				C94437651D838ABF0096F84E /* Fonts in Resources */,
 				D29392B72004D785001FB2AA /* hterm_all.patches.js in Resources */,
 				D2094662204D3FC5003C4F72 /* cacert.pem in Resources */,
@@ -2869,8 +2938,10 @@
 			files = (
 				D2AD8E7D27A2BAFA00DED28D /* CheckmarkRow.swift in Sources */,
 				D2AD8E7527A2BAFA00DED28D /* PurchasesUserModel.swift in Sources */,
+				B37F433A2A7DEDE60038F155 /* ggml.c in Sources */,
 				BD9EA212271F824900874007 /* Publisher.swift in Sources */,
 				D241CBDF23040734003D64A5 /* KBKeyAccessibilityElement.swift in Sources */,
+				B37F434F2A7DEF6D0038F155 /* RiffWaveUtils.swift in Sources */,
 				D2DE0DDE260331F300A69B6F /* NewKeyView.swift in Sources */,
 				D2AD8E7A27A2BAFA00DED28D /* ShakeDetector.swift in Sources */,
 				D2D75EE021AFDA10007336B6 /* LayoutManager.m in Sources */,
@@ -2885,6 +2956,7 @@
 				0716B5721CFFAB9300268B5B /* AppDelegate.m in Sources */,
 				D275492D26A033CC0039CC95 /* FaceCam.swift in Sources */,
 				D2E5454527C4C83C002635A2 /* FeedbackView.swift in Sources */,
+				B37F434E2A7DEF6D0038F155 /* Recorder.swift in Sources */,
 				07F670731D05EEE200C0A53C /* MoshSession.m in Sources */,
 				07F670721D05EEE200C0A53C /* MCPSession.m in Sources */,
 				D23742CA21106ADF00366359 /* bench.m in Sources */,
@@ -2906,6 +2978,7 @@
 				D27BBA1C20529FFF00AEA303 /* TermStream.m in Sources */,
 				D2036B6323967F2F0013D2A3 /* BindingConfigView.swift in Sources */,
 				D25D58102358897B00D1BCAE /* Complete.swift in Sources */,
+				B37F43532A7DEFB10038F155 /* WhisperView.swift in Sources */,
 				B7D4503C1DD4706000CE0DBE /* Reachability.m in Sources */,
 				B752EE2E1DFEF45300E305C8 /* BKSecurityConfigurationViewController.m in Sources */,
 				D2F330D420A6F1DF0074ADD7 /* clear.m in Sources */,
@@ -2913,6 +2986,7 @@
 				D27D0118261202A400128C23 /* KeyUIError.swift in Sources */,
 				07FAB8F425C8E6C500E1CC2C /* SSHConfig.swift in Sources */,
 				D2CF27292428A791009885ED /* KBTracker.swift in Sources */,
+				B37F433E2A7DEE2A0038F155 /* LibWhisper.swift in Sources */,
 				D2AD8E7927A2BAFA00DED28D /* PaywallView.swift in Sources */,
 				07F670771D05EEE200C0A53C /* SSHSession.m in Sources */,
 				D241CBD323040734003D64A5 /* KBSound.swift in Sources */,
@@ -3007,6 +3081,7 @@
 				D2C24415238E44AB0082C69C /* KeyCode.swift in Sources */,
 				D2F330CC20A6D98C0074ADD7 /* config.m in Sources */,
 				D241CBDB23040734003D64A5 /* KBAccessoryView.swift in Sources */,
+				B37F43512A7DEF8A0038F155 /* WhisperState.swift in Sources */,
 				07FAB8F225C8E6C500E1CC2C /* ssh.swift in Sources */,
 				BD98AC84260BD8DC00B4E6A1 /* SSHAgentAdd.swift in Sources */,
 				D2D8DD9023C84A6E00BFF223 /* StuckView.swift in Sources */,
@@ -3018,6 +3093,7 @@
 				D2FCB4DD2339F9DB00A88108 /* UIScrollView+Paging.swift in Sources */,
 				D21DEE4F260DD60D00D8E640 /* KeyDetailsView.swift in Sources */,
 				D2AD8E5E27A2BAD600DED28D /* StatusBarLessViewController.swift in Sources */,
+				B37F43392A7DEDE60038F155 /* whisper.cpp in Sources */,
 				C989E5571D6CC4A1003E0079 /* BKFontCreateViewController.m in Sources */,
 				D241CBD723040734003D64A5 /* KBKeyShape.swift in Sources */,
 				D2C24420238E44AB0082C69C /* Chevron.swift in Sources */,
@@ -4291,7 +4367,8 @@
 					"$(inherited)",
 				);
 				INFOPLIST_FILE = Blink/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Needed to transcribe audio";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -4327,7 +4404,8 @@
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = "";
 				INFOPLIST_FILE = Blink/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Needed to transcribe audio";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

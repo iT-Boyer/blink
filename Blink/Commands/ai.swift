@@ -28,12 +28,12 @@ struct AI: NonStdIOCommand {
       var sema: DispatchSemaphore? = nil
 
       printDebug("Checking authorization status")
-      switch AVCaptureDevice.authorizationStatus(for: .video) {
+      switch AVCaptureDevice.authorizationStatus(for: .audio) {
       case .notDetermined:
         printDebug("Status is not determined. Requesting access...")
         sema = .init(value: 1)
         var accessGranted = false
-        AVCaptureDevice.requestAccess(for: .video, completionHandler: { granted in
+        AVCaptureDevice.requestAccess(for: .audio, completionHandler: { granted in
           accessGranted = granted
           sema?.signal()
         })

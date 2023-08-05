@@ -121,6 +121,8 @@
 	<string>Allow geo command to track coordinates only while blink is running</string>
 	<key>NSSiriUsageDescription</key>
 	<string>storing commands</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Needed to transcribe audio</string>
 	<key>NSUbiquitousContainers</key>
 	<dict>
 		<key>iCloud.sh.blink.blinkshell</key>
