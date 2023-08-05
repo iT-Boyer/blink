@@ -77,6 +77,7 @@ struct Complete {
     case blinkGeo
     case blinkBuild
     case facecam
+    case ai
     case no
   }
   
@@ -191,7 +192,8 @@ struct Complete {
       "open": "open url of file (Experimental). 📤",
       "link-files": "link folders from Files.app (Experimental).",
       "build": "Access to Blink dev machines. ⚒ ",
-      "facecam": "Control facecam widget"
+      "facecam": "Control facecam widget",
+      "ai": "Control AI widget"
     ]
     
     __commandHintsCache = result
@@ -208,6 +210,7 @@ struct Complete {
     case "geo": return .blinkGeo
     case "build": return .blinkBuild
     case "facecam": return .facecam
+    case "ai": return .ai
     case "help", "exit", "whoami", "config", "clear", "history", "link-files":
       return .no
     default:
@@ -351,6 +354,7 @@ struct Complete {
     case .blinkHost: src = _allBlinkHosts();
     case .blinkGeo: src = ["track", "lock", "stop", "current", "authorize", "last"]
     case .facecam: src = ["on", "off"]
+    case .ai: src = ["on", "off"]
     case .blinkBuild:
 //      src = ["machine", "up", "down", "ssh-keys", "containers", "device", "ps", "ssh", "mosh", "balance"]
       return src.filter( {$0.hasPrefix(input)} )

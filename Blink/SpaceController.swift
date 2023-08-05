@@ -84,6 +84,7 @@ class SpaceController: UIViewController {
     _commandsHUD.setNeedsLayout()
     
     FaceCamManager.update(in: self)
+    AIManager.update(in: self)
    
     DispatchQueue.main.async {
       self.forEachActive { t in

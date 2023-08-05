@@ -51,6 +51,13 @@
 		<string></string>
 		<string>no</string>
 	</array>
+	<key>ai</key>
+	<array>
+		<string>MAIN</string>
+		<string>ai_main</string>
+		<string></string>
+		<string>no</string>
+	</array>
 	<key>ssh-add</key>
 	<array>
 		<string>MAIN</string>
