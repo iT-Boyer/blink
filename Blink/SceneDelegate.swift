@@ -619,8 +619,9 @@ extension SceneDelegate {
   
   /**
    Handles the x-callback-url, if  a successful `x-success` URL is provided when being called from apps like Shortcuts it returns to the original app after a successful execution.
-    - Parameters:
-      - xCallbackUrl: The x-callback-url specified by the user, URL format should be `blinkshell://run?key=KEY&cmd=CMD%20ENCODED`
+   处理x-callback-url，如果从应用程序(如捷径)调用时提供了一个成功的' x-success ' url，它在成功执行后返回到原始应用程序。
+   - Parameters:
+      - xCallbackUrl: x-callback-url由用户指定，但格式应为 `blinkshell://run?key=KEY&cmd=CMD%20ENCODED`
    */
   private func _handleXcallbackUrl(with xCallbackUrl: URL) {
     
@@ -660,8 +661,7 @@ extension SceneDelegate {
       return
     }
     
-    // Cancel execution of the command if the x-callback-url doesn't have a
-    // key field present that is needed to allow URL actions
+    //如果x-callback-url没有提供允许所有操作所需的 key 字段，则取消命令的执行
     guard let keyItem: String = items.first(where: { $0.name == "key" })?.value else {
       
       if let xCancelURL = xCancelURL {
@@ -671,9 +671,7 @@ extension SceneDelegate {
       return
     }
     
-    // Cancel the execution of the command as x-callback-url are not
-    // enabled for the user's or the x-callback-url does not have
-    // the correct key set
+    //如果用户的x-callback-url没有启用，或者x-callback-url没有设置正确的key关键字，则取消执行该命令
     guard keyItem == BKDefaults.xCallBackURLKey() else {
       
       if let xErrorURL = xErrorURL {
@@ -698,17 +696,14 @@ extension SceneDelegate {
     
     _spCtrl.focusOnShellAction()
     
-    // If SSH/mosh session is already open in the current terminal shell
-    // create a new one and then write the SSH command
+    //如果当前终端shell中已经打开了ssh/mosh会话，那么创建一个新的会话，然后写入ssh命令
     guard term.isRunningCmd() else {
-       // No running command or shell found running, run the SSH command on the
-       // available shell
+      //没有正在运行的命令或shell，请在可用的shell上运行ssh命令
       term.xCallbackLineSubmitted(cmdItem, xSuccessURL)
       return
     }
     
-    // If a SSH/mosh connection is already open in the current terminal shell
-    // create a new one and then write the command
+    //如果在当前终端shell中已经打开了SSH/mosh连接，则创建一个新的连接，然后写入命令
     _spCtrl.newShellAction()
 
     guard let newTerm = _spCtrl.currentTerm() else {
