@@ -1,0 +1,205 @@
+* Blink Shell for iOS
+:PROPERTIES:
+:CUSTOM_ID: blink-shell-for-ios
+:END:
+Do Blink! [[https://blink.sh][Blink]] is the first professional,
+desktop-grade terminal for iOS that leverages the support of Mosh and
+SSH. Thus, we can unequivocally guarantee stable connections,
+lightning-fast speeds, and full configurations. It can and should be
+your all-day-long tool.
+
+We did not create another terminal to fix your website on the go. Blink
+was built as a professional grade product from the onset. We started by
+analyzing what the must-haves were and we ended up grounding Blink on
+these three concepts: - Fast rendering: dmesg in your Unix server should
+be instantaneous. We can't wait even a second to render. We didn't need
+to reinvent the wheel to make this happen. We simply used Chromium's
+HTerm to ensure that rendering is perfect and fast, even with those
+special, tricky encodings. - Always on: Mosh transcends SSH's
+variability. Mosh overcomes the unstable and intermittent connectivity
+that we all associate with mobile connections. You can check your Safari
+without fear of having to restart the SSH connection. You can flawlessly
+jump from home, to the train, and then the office thanks to Mosh. Blink
+is rock-solid connected all the way. Mosh is readily available and can
+be easily installed on your server. Go to https://mosh.org. - Fully
+configurable: Blink embraces Bluetooth-coupled keyboards with gusto.
+Some like Caps as Esc on Vim, others Caps as Ctrl on Emacs. Blink
+champions them all. But there's more, because we want more. You can also
+add your own custom themes and fonts to Blink. During your always-on
+sessions, you're in your zone.
+
+But, Blink is much more. Please read on: - You should command your
+terminal, not navigate it. Blink will jump you right into a friendly
+shell and it'll be clear to you how to roll. - The interface is
+straightforward. We dumped all menus and went full screen for your
+terminal. - Use swipe to move between your open connections, slide down
+to close them, and even pinch to zoom! - Configure your Blink
+connections by adding your own Hosts and RSA Encryption keys. Everything
+will look familiar and you get to work, fast! - We've incorporated
+SplitView, for those necessary Google searches and chats with coworkers.
+
+For more information, please visit [[https://blink.sh][Blink Shell]].
+
+* Additions:
+:PROPERTIES:
+:CUSTOM_ID: additions
+:END:
+Blink also contains a set of shell utilities, so you can add / remove
+files, list them, etc.
+
+Specifically, the commands available (as of now) are:
+
+- cd, setenv, ls, touch, cp, rm, ln, mv, mkdir, rmdir, df, du, chksum,
+  chmod, chflags, chgrp, stat, readlink, compress, uncompress, gzip,
+  gunzip,
+
+- pwd, env, printenv, date, uname, id, groups, whoami, uptime
+
+- cat, grep, wc
+
+- curl (includes http, https, scp, sftp...), scp, sftp
+
+- tar
+
+- You can call commands individually, or use small scripts using python
+  or lua. There is redirection (">", "<", "&>" ...), but no pipe.
+
+All these commands are inside the =ios_system.framework= (precompiled,
+for facility). If you want to edit the source (to add more commands),
+see: https://github.com/holzschu/ios_system.
+
+curl opens access to file transfers to and from your iPad (ftp, http,
+scp, sftp...). It uses the key management of BLINKSHELL (the keys you
+created with "config"). You can also specify keys with a path:
+
+#+begin_example
+curl scp://host.name.edu/filename -o filename --key $SHARED/id_rsa --pass MyPassword 
+#+end_example
+
+You can also use the scp and sftp commands:
+
+#+begin_example
+scp user@host.name.edu:filename . 
+sftp localFilename user@host.name.edu:~/ 
+#+end_example
+
+scp and sftp are implemented through curl, by rewriting the arguments to
+follow the curl syntax. Pro: lighter implementation, smaller memory
+cost, less likely to have function name collisions. Con: some switches
+might not have exactly the same meaning.
+
+* Environment variables
+:PROPERTIES:
+:CUSTOM_ID: environment-variables
+:END:
+In iOS, because of sandbox restrictions, you cannot write in the =~=
+directory, only in =~/Documents/=, =~/Library/= and =~/tmp=. Most Unix
+programs assume the configuration files are in =$HOME=. So either you
+redefine =$HOME= to =~/Documents/= or you set configuration variables
+(using =setenv=) to some other place.
+
+I do this in Blink, inside the =MCPSession.m= file. The following
+variables are defined:
+
+#+begin_src sh
+setenv PATH = $PATH:~/Library/bin:~/Documents/bin
+setenv PYTHONHOME = $HOME/Library/
+setenv SSH_HOME = $HOME/Documents/
+setenv CURL_HOME = $HOME/Documents/
+setenv HGRCPATH = $HOME/Documents/.hgrc/
+setenv SSL_CERT_FILE = $HOME/Documents/cacert.pem
+#+end_src
+
+If you want to change them permanently, it's probably best to edit
+=MCPSession.m=.
+
+* Obtaining Blink
+:PROPERTIES:
+:CUSTOM_ID: obtaining-blink
+:END:
+Blink 现在已在[[<https://itunes.apple.com/app/id1156707581>][AppStore]]上架。去看看吧!
+
+如果你想参与它的开发,我们非常欢迎你的加入! 有两种方式可以为这个项目做贡献:你可以自己下载并构建 Blink,或者你可以请求加入帮助我们测试未来版本的邀请(在 raw 分支上)。如果你想参与测试,请关注我们的 Twitter [[<https://twitter.com/BlinkShell>][~t:@BlinkShell]] 并发推文告诉我们你的使用场景。邀请函会分阶段发出,如果你没有立即收到邀请,请保持耐心。
+
+bug 应该在 GitHub 上报告。如果你有任何问题,或者想确保我们不会错过有趣的功能,请通过我们的 Twitter 账号 [[<https://twitter.com/Blink>hell>][~t:@BlinkShell]] 发送你的建议。我们很乐意与你讨论!请不要在 Twitter 上报告 bug。
+
+我们迫不及待想收到你们宝贵的反馈。尽情享受吧!
+** Build
+:PROPERTIES:
+:CUSTOM_ID: build
+:END:
+#+caption: CI
+[[https://github.com/blinksh/blink/workflows/CI/badge.svg]]
+
+我们使在 iOS 设备上通过 Xcode 构建和安装 Blink 变得非常容易。我们为 master 分支提供了一个预编译的包,其中包含所有的库。以下是步骤:
+
+0. 使用 ~xcode-select -p~ (=/Applications/Xcode.app/Contents/Developer=),而不是命令行工具。
+
+1. 运行以下命令:
+  #+begin_src sh
+git clone --recursive https://github.com/blinksh/blink.git && \
+    cd blink && ./get_frameworks.sh && \
+    rm -rf Blink.xcodeproj/project.xcworkspace/xcshareddata/
+#+end_src
+
+2. 改变开发者id
+   #+begin_src sh
+cp template_setup.xcconfig developer_setup.xcconfig
+   #+end_src
+
+编辑 developer_setup.xcconfig (改变苹果开发者 id 等)。
+
+3. 在 Xcode 中打开项目
+
+  a.  如果你想构建的时候不包含 iCloud、推送通知或 Keychain 共享,在做任何其他事情之前,去项目的 capabilities 中关闭推送通知、iCloud 和 Keychain 共享。
+
+4. 连接你想构建的设备,并在 Product -> Destination 中选择它。
+
+5. 构建并在设备上运行。
+
+这将下载 Blink 和相关的框架:libssh2、OpenSSL、libmoshios、protobuf 和 ios_system。
+
+虽然这是让你快速运行的最简单的方法,如果你想自己编译所有的库和资源,可以参考 BUILD.md 文件。如果你遇到任何问题,请让我们知道。Blink 是一个复杂的项目,有多个底层依赖,我们仍在寻找方法来简化和自动化完整的编译流程。
+
+* Using Blink
+:PROPERTIES:
+:CUSTOM_ID: using-blink
+:END:
+
+ 我们的UI非常直观,在触摸设备上对真正重要的部分终端进行了优化。你可以直接跳入一个非常简单的 shell,所以你会知道怎么操作。这里还有一些更多的技巧:
+
+- 输入 'help' 可以在 shell 中找到信息。
+
+- 使用两个手指点击可以创建一个新的 shell。
+
+- 通过滑动手指可以在 shells 间移动。
+
+- 你可以退出会话回到 shell 打开一个新的连接。
+
+- 使用捏合手势可以增加或减小文本的大小。如果使用键盘,也可以用 Cmd+ 或 Cmd-。
+
+- 通过选择文本或点击屏幕可以复制粘贴。
+
+- 运行 'config'可以设置你的键。通过 ssh-copy-id 安装到服务器。
+
+- SmartKeys 栏中的 Ctrl 和 Alt 修饰键允许连续按压,就像真的键盘一样。
+
+- 使用三指点击可以打开菜单。
+
+* Changelog
+:PROPERTIES:
+:CUSTOM_ID: changelog
+:END:
+[[file:CHANGELOG.md][View all changes]]
+
+* Attributions
+:PROPERTIES:
+:CUSTOM_ID: attributions
+:END:
+- [[https://mosh.org][Mosh]] was written by Keith Winstein, along with
+  Anders Kaseorg, Quentin Smith, Richard Tibbetts, Keegan McAllister,
+  and John Hood.
+- This product includes software developed by the OpenSSL Project for
+  use in the OpenSSL Toolkit. (https://www.openssl.org/).
+- [[https://www.libssh2.org][Libssh2]]
+- Entypo pictograms by Bruce Daniel www.entypo.com.

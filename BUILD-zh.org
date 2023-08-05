@@ -1,0 +1,85 @@
+* Building
+:PROPERTIES:
+:CUSTOM_ID: building
+:END:
+We provide you with two ways to compile and install Blink Shell. This
+instructions will refer to assembling a full Blink Shell, compiling
+libraries and resources yourself. Due to the many dependencies that
+compose Blink Shell, this is the recommended but not shortest method.
+
+You can also clone Blink and obtain a "ready to go" tar.gz with all the
+dependencies as described in the [[file:README.md#build]["Build" section
+of the README.md file]].
+
+我们提供了两种编译和安装 Blink Shell 的方法。这些说明将介绍如何完整地编译 Blink Shell,自己编译库和资源。由于组成 Blink Shell 的依赖关系非常复杂,这是推荐的方法,但不是最简短的方法。
+
+你也可以克隆 Blink 仓库,并按 README.md 文件“Build”部分所述,获取一个包含所有依赖的 “ready to go”的 tar.gz 文件。
+
+** Requirements
+:PROPERTIES:
+:CUSTOM_ID: requirements
+:END:
+请注意,要在个人设备上编译和安装 Blink,您需要遵守 Apple 开发者条款和条件,包括为此目的获得开发者许可证。您还需要获得 Apple Inc 在单独许可下提供的所有 XCode 命令行开发者工具和SDK。具体需要:
+
+- XCode > 11.0 和 XCode 命令行工具
+- OSX 的 Autotools - 需要安装 OSX 版本的 Autotools
+
+** Cloning
+:PROPERTIES:
+:CUSTOM_ID: cloning
+:END:
+Clone Blink into your local repository and make sure to obtain any
+submodules: git submodule init git submodule update
+
+** Dependencies & Requirements
+:PROPERTIES:
+:CUSTOM_ID: dependencies-requirements
+:END:
+Blink makes use of multiple dependencies that you have to compile
+separately before building Blink itself. There are simple scripts
+available to perform this operation.
+- [[https://github.com/holzschu/libssh2-for-iOS][Libssh2 for iOS]]; Includes OpenSSL.
+- [[https://github.com/blinksh/build-mosh][Mosh for iOS]]; Includes Protobuf.
+
+Please note that Blink currently only supports armv64, so compilation
+for other architectures is not necessary.
+
+*** 安装
+
+**** 库
+
+Blink Shell 的 XCode 项目会在 Framework 文件夹下查找库依赖。Libssh2 和 Mosh for iOS也会分别构建 OpenSSL 和 Protobuf,这两者都是工作所必需的。
+
+要在你的 Blink 仓库中安装 Libssh2 和 OpenSSL,请复制在[[https://github.com/carloscabanero/libssh2-for-iOS][Libssh2 for iOS]] 生成的.framework 文件到 Framework 文件夹。
+
+[[https://github.com/blinksh/build-mosh][Mosh for iOS]] 会编译 Protobuf 和 Mosh for iOS。编译完成后,从 build-protobuf/protobuf-version/lib 文件夹复制 libmoshios.framework 和 libprotobuf.a。
+
+Blink 还使用了另外两个项目,应该通过 git 子模块自动下载到同一项目中:
+- UICKeyChainStore
+- MBProgressHUD
+
+**** 资源
+
+Blink Shell 使用的是一个运行在 JavaScript 中的终端,在运行时链接。所有需要打包到 app 中的资源,比如终端、字体和主题,必须放在 Resources 文件夹下。
+
+字体风格上传需要 [[https://github.com/typekit/webfontloader][webfonts.js]],但这个对 Blink 工作不是必须的。可以下载这个文件放在 Resources 文件夹下。
+
+Blink 的终端运行在链接的 JavaScript 代码中。大多数可用的开源终端只要提供 “write” 和“signal”函数就可以与 Blink 一起工作。Resources/term.html 文件给出了一个例子。如果使用其他 terminal.js ,请编辑 term.html 以匹配。我们也成功地使用了其他终端比如 [[http://terminal.js.org][Terminal.js]].
+
+** Compiling
+:PROPERTIES:
+:CUSTOM_ID: compiling
+:END:
+Blink 使用标准的 .xcodeproj 文件。任何缺失的文件在 Xcode 中会标红,这可以用来测试你的安装情况。
+
+要配置项目:
+
+1. 在 Targets > Blink > General > Identities 下设置唯一的 Bundle Identifier。
+
+2. 在 Targets > Blink > General > Identities 下设置你的 Team。
+
+3. 你可能会被要求接受你的配置文件或在 Xcode 中设置开发者账号,在这种情况下请按照 Apple 开发者文档操作。
+
+4. 如果你想使用 HockeyApp,把 scheme 改为 Blink Hockey,并在 info.plist 中添加你的 HockeyID。
+
+确保“Blink”是选中的 Scheme 进行编译。作为一个标准的 Xcode 项目,使用 Cmd-R 运行它。
