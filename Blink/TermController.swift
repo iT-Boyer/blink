@@ -120,7 +120,7 @@ private class ProxyView: UIView {
   }
 }
 
-class TermControllerTermController: UIViewController {
+class TermController: UIViewController {
   private let _meta: SessionMeta
  
   private var _termDevice = TermDevice()
