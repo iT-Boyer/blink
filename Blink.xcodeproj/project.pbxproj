@@ -81,6 +81,9 @@
 		98E7D0BE2638B46400758CF9 /* BlinkItemReference.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98E7D0BD2638B46400758CF9 /* BlinkItemReference.swift */; };
 		98E7D0E4263971C000758CF9 /* BlinkFiles.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 07FABBAF25C9AECF00E1CC2C /* BlinkFiles.framework */; };
 		B331F0C62B02878D0002A36E /* OpenAI in Frameworks */ = {isa = PBXBuildFile; productRef = B331F0C52B02878D0002A36E /* OpenAI */; };
+		B331F0D02B02947E0002A36E /* Nimble in Frameworks */ = {isa = PBXBuildFile; productRef = B331F0CF2B02947E0002A36E /* Nimble */; };
+		B331F0D32B0294D10002A36E /* Quick in Frameworks */ = {isa = PBXBuildFile; productRef = B331F0D22B0294D10002A36E /* Quick */; };
+		B331F0D52B02952D0002A36E /* OpenAISpecs.swift in Sources */ = {isa = PBXBuildFile; fileRef = B331F0D42B02952D0002A36E /* OpenAISpecs.swift */; };
 		B37F43302A7DE2710038F155 /* AI.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37F432F2A7DE2710038F155 /* AI.swift */; };
 		B37F43322A7DE2920038F155 /* ai.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37F43312A7DE2920038F155 /* ai.swift */; };
 		B37F43392A7DEDE60038F155 /* whisper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B37F43372A7DEDE60038F155 /* whisper.cpp */; };
@@ -762,6 +765,7 @@
 		98271258262E4BDB00F883FA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		98271259262E4BDB00F883FA /* BlinkFileProvider.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BlinkFileProvider.entitlements; sourceTree = "<group>"; };
 		98E7D0BD2638B46400758CF9 /* BlinkItemReference.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlinkItemReference.swift; sourceTree = "<group>"; };
+		B331F0D42B02952D0002A36E /* OpenAISpecs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAISpecs.swift; sourceTree = "<group>"; };
 		B37F432F2A7DE2710038F155 /* AI.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AI.swift; sourceTree = "<group>"; };
 		B37F43312A7DE2920038F155 /* ai.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ai.swift; sourceTree = "<group>"; };
 		B37F43352A7DEDE60038F155 /* ggml.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ggml.h; path = ../whisper.cpp/ggml.h; sourceTree = "<group>"; };
@@ -1234,6 +1238,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B331F0D32B0294D10002A36E /* Quick in Frameworks */,
+				B331F0D02B02947E0002A36E /* Nimble in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1992,6 +1998,7 @@
 				D265FBC42317E5090017EAC4 /* SessionParamsTests.swift */,
 				BD8BBF0825F819970084705F /* SEKeyTests.swift */,
 				BD9EA215271F83B400874007 /* BlinkLoggingTests.swift */,
+				B331F0D42B02952D0002A36E /* OpenAISpecs.swift */,
 			);
 			path = BlinkTests;
 			sourceTree = "<group>";
@@ -2530,6 +2537,10 @@
 				D265FBC02317DD3C0017EAC4 /* PBXTargetDependency */,
 			);
 			name = BlinkTests;
+			packageProductDependencies = (
+				B331F0CF2B02947E0002A36E /* Nimble */,
+				B331F0D22B0294D10002A36E /* Quick */,
+			);
 			productName = BlinkTests;
 			productReference = D265FBBA2317DD3C0017EAC4 /* BlinkTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
@@ -2678,6 +2689,8 @@
 				BD896F8726CFDB17004313E6 /* XCRemoteSwiftPackageReference "swift-atomics" */,
 				D2AD8E8027A2C79B00DED28D /* XCRemoteSwiftPackageReference "purchases-ios" */,
 				B331F0C42B0280090002A36E /* XCRemoteSwiftPackageReference "OpenAI" */,
+				B331F0CE2B02947E0002A36E /* XCRemoteSwiftPackageReference "Nimble" */,
+				B331F0D12B0294D10002A36E /* XCRemoteSwiftPackageReference "Quick" */,
 			);
 			productRefGroup = EA0BA18C1C0CC57B00719C1A /* Products */;
 			projectDirPath = "";
@@ -3083,6 +3096,7 @@
 				D2CB059A273BBB0800394A4F /* SEKey.swift in Sources */,
 				D265FBC52317E5090017EAC4 /* SessionParamsTests.swift in Sources */,
 				BD9EA218271F846400874007 /* Publisher.swift in Sources */,
+				B331F0D52B02952D0002A36E /* OpenAISpecs.swift in Sources */,
 				BD8BBF5525F829B00084705F /* SEKeyTests.swift in Sources */,
 				BD9EA216271F83B400874007 /* BlinkLoggingTests.swift in Sources */,
 				D20CBA57236031D700D93301 /* CompleteUtilsTests.swift in Sources */,
@@ -4558,6 +4572,7 @@
 					"$(inherited)",
 				);
 				INFOPLIST_FILE = BlinkTests/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -4592,6 +4607,7 @@
 				CURRENT_PROJECT_VERSION = 543;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				INFOPLIST_FILE = BlinkTests/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -4950,6 +4966,22 @@
 				minimumVersion = 0.2.4;
 			};
 		};
+		B331F0CE2B02947E0002A36E /* XCRemoteSwiftPackageReference "Nimble" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Quick/Nimble";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+		B331F0D12B0294D10002A36E /* XCRemoteSwiftPackageReference "Quick" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Quick/Quick.git";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
 		BD896F8726CFDB17004313E6 /* XCRemoteSwiftPackageReference "swift-atomics" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/apple/swift-atomics.git";
@@ -4977,6 +5009,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = B331F0C42B0280090002A36E /* XCRemoteSwiftPackageReference "OpenAI" */;
 			productName = OpenAI;
+		};
+		B331F0CF2B02947E0002A36E /* Nimble */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B331F0CE2B02947E0002A36E /* XCRemoteSwiftPackageReference "Nimble" */;
+			productName = Nimble;
+		};
+		B331F0D22B0294D10002A36E /* Quick */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B331F0D12B0294D10002A36E /* XCRemoteSwiftPackageReference "Quick" */;
+			productName = Quick;
 		};
 		BD896F8826CFDB17004313E6 /* Atomics */ = {
 			isa = XCSwiftPackageProductDependency;
