@@ -34,7 +34,7 @@ import Foundation
 import SwiftUI
 
 import Purchases
-
+import Intents
 
 let Blink14BundleID = "Com.CarlosCabanero.BlinkShell"
 let Blink15BundleID = "sh.blink.blinkshell"
@@ -295,6 +295,37 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     // NOTE We could also store the contexts and use them later.
     DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
       self.scene(scene, openURLContexts: connectionOptions.urlContexts)
+    }
+    //贡献 shortcut 插件
+    donateIntent()
+//    allowSiri()
+  }
+  //请求 siri 授权, 个人帐号无法使用 siri 组件
+  //*** Terminating app due to uncaught exception 'NSInternalInconsistencyException', reason: 'Use of the class <INPreferences: 0x282f60c20> from an app requires the entitlement com.apple.developer.siri. Did you enable the Siri capability in your Xcode project?'
+  private func allowSiri() {
+      INPreferences.requestSiriAuthorization { status in
+          switch status {
+          case .authorized:
+              print("siri ok")
+          default:
+              print("siri error")
+          }
+      }
+  }
+  private func donateIntent() {
+    let intent = PingIntent()
+    intent.suggestedInvocationPhrase = "Add New Invoice"
+    intent.hostname = "ipv6-test.com"
+    intent.times = "9"
+    let interaction = INInteraction(intent: intent, response: nil)
+    interaction.donate { (error) in
+      if error != nil {
+        if let error = error as NSError? {
+          print("Interaction donation failed: \(error.description)")
+        } else {
+          print("Successfully donated interaction")
+        }
+      }
     }
   }
   

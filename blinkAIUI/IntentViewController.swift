@@ -38,7 +38,7 @@ import IntentsUI
 
 // You can test this example integration by saying things to Siri like:
 // "Send a message using <myApp>"
-
+// 默认：INSendMessageIntent
 class IntentViewController: UIViewController, INUIHostedViewControlling {
     
     override func viewDidLoad() {
@@ -53,7 +53,8 @@ class IntentViewController: UIViewController, INUIHostedViewControlling {
         // Do configuration here, including preparing views and calculating a desired size for presentation.
         completion(true, parameters, self.desiredSize)
     }
-    
+  
+    //设置所需的视图控制器大小
     var desiredSize: CGSize {
         return self.extensionContext!.hostedViewMaximumAllowedSize
     }
