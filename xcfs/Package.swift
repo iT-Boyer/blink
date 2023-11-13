@@ -79,10 +79,11 @@ _ = Package(
   name: "deps",
   platforms: [.macOS("11")],
   dependencies: [
-    .package(url: "https://github.com/yury/FMake", from: "0.0.15"),
-    .package(url: "https://github.com/blinksh/swift-argument-parser", .upToNextMinor(from: "0.5.1")),
-    .package(url: "https://github.com/blinksh/BlinkBuild", from: "0.0.22"),
-    .package(url: "https://github.com/yury/SSHConfig", from: "0.0.5"),
+    .package(url: "https://github.com/yury/FMake", .branchItem("main")), //from: "0.0.15"
+    // .package(url: "https://github.com/blinksh/swift-argument-parser", from: "0.5.1"),
+    .package(url: "https://github.com/blinksh/BlinkBuild", from: "0.0.22"), //
+    .package(url: "https://github.com/yury/SSHConfig", .branchItem("main")), //"0.0.5"
+    // .package(url: "https://github.com/MacPaw/OpenAI", .branchItem("main")),
   ],
   
   targets: binaryTargets + [

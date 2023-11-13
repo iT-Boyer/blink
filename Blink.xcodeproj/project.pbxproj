@@ -80,6 +80,7 @@
 		9827126B262E4BDB00F883FA /* BlinkFileProvider.appex in Embed PlugIns */ = {isa = PBXBuildFile; fileRef = 98271250262E4BDB00F883FA /* BlinkFileProvider.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		98E7D0BE2638B46400758CF9 /* BlinkItemReference.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98E7D0BD2638B46400758CF9 /* BlinkItemReference.swift */; };
 		98E7D0E4263971C000758CF9 /* BlinkFiles.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 07FABBAF25C9AECF00E1CC2C /* BlinkFiles.framework */; };
+		B331F0C62B02878D0002A36E /* OpenAI in Frameworks */ = {isa = PBXBuildFile; productRef = B331F0C52B02878D0002A36E /* OpenAI */; };
 		B37F43302A7DE2710038F155 /* AI.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37F432F2A7DE2710038F155 /* AI.swift */; };
 		B37F43322A7DE2920038F155 /* ai.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37F43312A7DE2920038F155 /* ai.swift */; };
 		B37F43392A7DEDE60038F155 /* whisper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B37F43372A7DEDE60038F155 /* whisper.cpp */; };
@@ -1250,6 +1251,7 @@
 				D2334EF825C1C28F00385378 /* mosh.xcframework in Frameworks */,
 				D218076325CD4FDC00B98902 /* LibSSH.xcframework in Frameworks */,
 				D2334F0025C1C28F00385378 /* shell.xcframework in Frameworks */,
+				B331F0C62B02878D0002A36E /* OpenAI in Frameworks */,
 				D2B9E21E268084E40084B2C4 /* Machines in Frameworks */,
 				D2A0C2162600D16300F0DF97 /* Protobuf_C_.xcframework in Frameworks */,
 				D2334F0C25C1C3C600385378 /* OpenSSH.xcframework in Frameworks */,
@@ -2562,6 +2564,7 @@
 				D2B9E21D268084E40084B2C4 /* Machines */,
 				D2B9E221268085050084B2C4 /* BuildCLI */,
 				D2AD8E8127A2C79B00DED28D /* Purchases */,
+				B331F0C52B02878D0002A36E /* OpenAI */,
 			);
 			productName = Blink;
 			productReference = EA0BA18B1C0CC57B00719C1A /* Blink.app */;
@@ -2674,6 +2677,7 @@
 			packageReferences = (
 				BD896F8726CFDB17004313E6 /* XCRemoteSwiftPackageReference "swift-atomics" */,
 				D2AD8E8027A2C79B00DED28D /* XCRemoteSwiftPackageReference "purchases-ios" */,
+				B331F0C42B0280090002A36E /* XCRemoteSwiftPackageReference "OpenAI" */,
 			);
 			productRefGroup = EA0BA18C1C0CC57B00719C1A /* Products */;
 			projectDirPath = "";
@@ -4938,6 +4942,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		B331F0C42B0280090002A36E /* XCRemoteSwiftPackageReference "OpenAI" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/MacPaw/OpenAI";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.2.4;
+			};
+		};
 		BD896F8726CFDB17004313E6 /* XCRemoteSwiftPackageReference "swift-atomics" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/apple/swift-atomics.git";
@@ -4960,6 +4972,11 @@
 		07FAB90E25C8E94E00E1CC2C /* ArgumentParser */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = ArgumentParser;
+		};
+		B331F0C52B02878D0002A36E /* OpenAI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B331F0C42B0280090002A36E /* XCRemoteSwiftPackageReference "OpenAI" */;
+			productName = OpenAI;
 		};
 		BD896F8826CFDB17004313E6 /* Atomics */ = {
 			isa = XCSwiftPackageProductDependency;

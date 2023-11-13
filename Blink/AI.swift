@@ -33,6 +33,7 @@
 import Foundation
 import UIKit
 import SwiftUI
+import OpenAI
 
 fileprivate extension UIView {
   func setRecursiveBg(color: UIColor) {
