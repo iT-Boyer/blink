@@ -91,6 +91,15 @@
 		B37F43532A7DEFB10038F155 /* WhisperView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37F43522A7DEFB10038F155 /* WhisperView.swift */; };
 		B37F43562A7DF7A70038F155 /* models in Resources */ = {isa = PBXBuildFile; fileRef = B37F43552A7DF7A60038F155 /* models */; };
 		B37F43582A7DF7C40038F155 /* samples in Resources */ = {isa = PBXBuildFile; fileRef = B37F43572A7DF7C40038F155 /* samples */; };
+		B3D477E12B0219A3001CD247 /* Intents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D2BF5F6B2659522C0070F839 /* Intents.framework */; };
+		B3D477E42B0219A3001CD247 /* IntentHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3D477E32B0219A3001CD247 /* IntentHandler.swift */; };
+		B3D477EC2B0219A4001CD247 /* IntentsUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B3D477EB2B0219A4001CD247 /* IntentsUI.framework */; };
+		B3D477EF2B0219A4001CD247 /* IntentViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3D477EE2B0219A4001CD247 /* IntentViewController.swift */; };
+		B3D477F22B0219A4001CD247 /* MainInterface.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = B3D477F02B0219A4001CD247 /* MainInterface.storyboard */; };
+		B3D477F62B0219A4001CD247 /* blinkAIUI.appex in Embed PlugIns */ = {isa = PBXBuildFile; fileRef = B3D477EA2B0219A4001CD247 /* blinkAIUI.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		B3D477FA2B0219A5001CD247 /* blinkAI.appex in Embed PlugIns */ = {isa = PBXBuildFile; fileRef = B3D477E02B0219A3001CD247 /* blinkAI.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		B3D478032B021B5F001CD247 /* Intents.intentdefinition in Sources */ = {isa = PBXBuildFile; fileRef = B3D478022B021B5F001CD247 /* Intents.intentdefinition */; };
+		B3D478042B021B5F001CD247 /* Intents.intentdefinition in Sources */ = {isa = PBXBuildFile; fileRef = B3D478022B021B5F001CD247 /* Intents.intentdefinition */; };
 		B700AED81DD0F2C200100EBF /* CloudKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B700AED71DD0F2C200100EBF /* CloudKit.framework */; };
 		B75112CD1DE4A7B10040C693 /* BKiCloudConfigurationViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = B75112CC1DE4A7B10040C693 /* BKiCloudConfigurationViewController.m */; };
 		B752EE2B1DFEF19D00E305C8 /* BKUserConfigurationManager.m in Sources */ = {isa = PBXBuildFile; fileRef = B752EE2A1DFEF19D00E305C8 /* BKUserConfigurationManager.m */; };
@@ -494,6 +503,20 @@
 			remoteGlobalIDString = 07FABBAE25C9AECF00E1CC2C;
 			remoteInfo = BlinkFiles;
 		};
+		B3D477F42B0219A4001CD247 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = EA0BA1831C0CC57B00719C1A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B3D477E92B0219A4001CD247;
+			remoteInfo = blinkAIUI;
+		};
+		B3D477F82B0219A5001CD247 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = EA0BA1831C0CC57B00719C1A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B3D477DF2B0219A3001CD247;
+			remoteInfo = blinkAI;
+		};
 		BD67FC83272DF22700C1EE75 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = EA0BA1831C0CC57B00719C1A /* Project object */;
@@ -643,6 +666,8 @@
 				D218069C25CC27C100B98902 /* AppKitBridge.bundle in Embed PlugIns */,
 				9827126B262E4BDB00F883FA /* BlinkFileProvider.appex in Embed PlugIns */,
 				BD9EA1D32718E19000874007 /* BlinkFileProviderUI.appex in Embed PlugIns */,
+				B3D477F62B0219A4001CD247 /* blinkAIUI.appex in Embed PlugIns */,
+				B3D477FA2B0219A5001CD247 /* blinkAI.appex in Embed PlugIns */,
 			);
 			name = "Embed PlugIns";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -750,6 +775,17 @@
 		B37F43522A7DEFB10038F155 /* WhisperView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WhisperView.swift; sourceTree = "<group>"; };
 		B37F43552A7DF7A60038F155 /* models */ = {isa = PBXFileReference; lastKnownFileType = folder; path = models; sourceTree = "<group>"; };
 		B37F43572A7DF7C40038F155 /* samples */ = {isa = PBXFileReference; lastKnownFileType = folder; path = samples; sourceTree = "<group>"; };
+		B3D477E02B0219A3001CD247 /* blinkAI.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = blinkAI.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		B3D477E32B0219A3001CD247 /* IntentHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntentHandler.swift; sourceTree = "<group>"; };
+		B3D477E52B0219A3001CD247 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B3D477EA2B0219A4001CD247 /* blinkAIUI.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = blinkAIUI.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		B3D477EB2B0219A4001CD247 /* IntentsUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IntentsUI.framework; path = System/Library/Frameworks/IntentsUI.framework; sourceTree = SDKROOT; };
+		B3D477EE2B0219A4001CD247 /* IntentViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntentViewController.swift; sourceTree = "<group>"; };
+		B3D477F12B0219A4001CD247 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/MainInterface.storyboard; sourceTree = "<group>"; };
+		B3D477F32B0219A4001CD247 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B3D477F72B0219A4001CD247 /* blinkAIUI.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = blinkAIUI.entitlements; sourceTree = "<group>"; };
+		B3D477FB2B0219A5001CD247 /* blinkAI.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = blinkAI.entitlements; sourceTree = "<group>"; };
+		B3D478022B021B5F001CD247 /* Intents.intentdefinition */ = {isa = PBXFileReference; lastKnownFileType = file.intentdefinition; path = Intents.intentdefinition; sourceTree = "<group>"; };
 		B700AED71DD0F2C200100EBF /* CloudKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CloudKit.framework; path = System/Library/Frameworks/CloudKit.framework; sourceTree = SDKROOT; };
 		B75112CB1DE4A7B10040C693 /* BKiCloudConfigurationViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BKiCloudConfigurationViewController.h; sourceTree = "<group>"; };
 		B75112CC1DE4A7B10040C693 /* BKiCloudConfigurationViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = BKiCloudConfigurationViewController.m; sourceTree = "<group>"; };
@@ -1126,6 +1162,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B3D477DD2B0219A3001CD247 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B3D477E12B0219A3001CD247 /* Intents.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B3D477E72B0219A4001CD247 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B3D477EC2B0219A4001CD247 /* IntentsUI.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		BD9EA1C62718E19000874007 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -1332,6 +1384,7 @@
 				0732F1051D062BF700AB5438 /* MBProgressHUD.xcodeproj */,
 				07FAB90925C8E94200E1CC2C /* swift-argument-parser */,
 				D2BF5F6B2659522C0070F839 /* Intents.framework */,
+				B3D477EB2B0219A4001CD247 /* IntentsUI.framework */,
 			);
 			path = Frameworks;
 			sourceTree = "<group>";
@@ -1551,6 +1604,28 @@
 				B37F434D2A7DEF6D0038F155 /* RiffWaveUtils.swift */,
 			);
 			path = Demo;
+			sourceTree = "<group>";
+		};
+		B3D477E22B0219A3001CD247 /* blinkAI */ = {
+			isa = PBXGroup;
+			children = (
+				B3D477FB2B0219A5001CD247 /* blinkAI.entitlements */,
+				B3D477E32B0219A3001CD247 /* IntentHandler.swift */,
+				B3D477E52B0219A3001CD247 /* Info.plist */,
+				B3D478022B021B5F001CD247 /* Intents.intentdefinition */,
+			);
+			path = blinkAI;
+			sourceTree = "<group>";
+		};
+		B3D477ED2B0219A4001CD247 /* blinkAIUI */ = {
+			isa = PBXGroup;
+			children = (
+				B3D477F72B0219A4001CD247 /* blinkAIUI.entitlements */,
+				B3D477EE2B0219A4001CD247 /* IntentViewController.swift */,
+				B3D477F02B0219A4001CD247 /* MainInterface.storyboard */,
+				B3D477F32B0219A4001CD247 /* Info.plist */,
+			);
+			path = blinkAIUI;
 			sourceTree = "<group>";
 		};
 		B75112C71DE4A7680040C693 /* UserConfiguration */ = {
@@ -2111,6 +2186,8 @@
 				BDD6D13827594BF900E76F1F /* BlinkConfigTests */,
 				BDBFA3062728914F00C77798 /* BlinkCode */,
 				BDBFA3102728914F00C77798 /* BlinkCodeTests */,
+				B3D477E22B0219A3001CD247 /* blinkAI */,
+				B3D477ED2B0219A4001CD247 /* blinkAIUI */,
 				0732F04F1D062BB300AB5438 /* Frameworks */,
 				0732F0481D062B9A00AB5438 /* Resources */,
 				074F30781D062A2800A73445 /* main.m */,
@@ -2139,6 +2216,8 @@
 				BDBFA3052728914F00C77798 /* BlinkCode.framework */,
 				BDBFA30C2728914F00C77798 /* BlinkCodeTests.xctest */,
 				BDD6D13727594BF900E76F1F /* BlinkConfigTests.xctest */,
+				B3D477E02B0219A3001CD247 /* blinkAI.appex */,
+				B3D477EA2B0219A4001CD247 /* blinkAIUI.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -2284,6 +2363,40 @@
 			);
 			productName = BlinkFileProvider;
 			productReference = 98271250262E4BDB00F883FA /* BlinkFileProvider.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		B3D477DF2B0219A3001CD247 /* blinkAI */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B3D477FF2B0219A6001CD247 /* Build configuration list for PBXNativeTarget "blinkAI" */;
+			buildPhases = (
+				B3D477DC2B0219A3001CD247 /* Sources */,
+				B3D477DD2B0219A3001CD247 /* Frameworks */,
+				B3D477DE2B0219A3001CD247 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = blinkAI;
+			productName = blinkAI;
+			productReference = B3D477E02B0219A3001CD247 /* blinkAI.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		B3D477E92B0219A4001CD247 /* blinkAIUI */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B3D477FC2B0219A6001CD247 /* Build configuration list for PBXNativeTarget "blinkAIUI" */;
+			buildPhases = (
+				B3D477E62B0219A4001CD247 /* Sources */,
+				B3D477E72B0219A4001CD247 /* Frameworks */,
+				B3D477E82B0219A4001CD247 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = blinkAIUI;
+			productName = blinkAIUI;
+			productReference = B3D477EA2B0219A4001CD247 /* blinkAIUI.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 		BD9EA1C82718E19000874007 /* BlinkFileProviderUI */ = {
@@ -2440,6 +2553,8 @@
 				BDCB7164268E1577007D7047 /* PBXTargetDependency */,
 				BD9EA1D22718E19000874007 /* PBXTargetDependency */,
 				D2A9B2FA272E6F26009FCBDE /* PBXTargetDependency */,
+				B3D477F52B0219A4001CD247 /* PBXTargetDependency */,
+				B3D477F92B0219A5001CD247 /* PBXTargetDependency */,
 			);
 			name = Blink;
 			packageProductDependencies = (
@@ -2459,7 +2574,7 @@
 			isa = PBXProject;
 			attributes = {
 				CLASSPREFIX = "";
-				LastSwiftUpdateCheck = 1310;
+				LastSwiftUpdateCheck = 1500;
 				LastUpgradeCheck = 0920;
 				ORGANIZATIONNAME = "Carlos Cabañero Projects SL";
 				TargetAttributes = {
@@ -2480,6 +2595,12 @@
 					};
 					9827124F262E4BDB00F883FA = {
 						CreatedOnToolsVersion = 12.4;
+					};
+					B3D477DF2B0219A3001CD247 = {
+						CreatedOnToolsVersion = 15.0.1;
+					};
+					B3D477E92B0219A4001CD247 = {
+						CreatedOnToolsVersion = 15.0.1;
 					};
 					BD9EA1C82718E19000874007 = {
 						CreatedOnToolsVersion = 13.0;
@@ -2581,6 +2702,8 @@
 				BDBFA3042728914F00C77798 /* BlinkCode */,
 				BDBFA30B2728914F00C77798 /* BlinkCodeTests */,
 				BDD6D13627594BF900E76F1F /* BlinkConfigTests */,
+				B3D477DF2B0219A3001CD247 /* blinkAI */,
+				B3D477E92B0219A4001CD247 /* blinkAIUI */,
 			);
 		};
 /* End PBXProject section */
@@ -2655,6 +2778,21 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B3D477DE2B0219A3001CD247 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B3D477E82B0219A4001CD247 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B3D477F22B0219A4001CD247 /* MainInterface.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2841,6 +2979,23 @@
 				BD896F7B26CEAD37004313E6 /* FileTranslatorCache.swift in Sources */,
 				98E7D0BE2638B46400758CF9 /* BlinkItemReference.swift in Sources */,
 				98271257262E4BDB00F883FA /* FileProviderEnumerator.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B3D477DC2B0219A3001CD247 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B3D478042B021B5F001CD247 /* Intents.intentdefinition in Sources */,
+				B3D477E42B0219A3001CD247 /* IntentHandler.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B3D477E62B0219A4001CD247 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B3D477EF2B0219A4001CD247 /* IntentViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -3038,6 +3193,7 @@
 				D2AD8E7727A2BAFA00DED28D /* LegacyMigrationView.swift in Sources */,
 				D241CBD523040734003D64A5 /* KBKey.swift in Sources */,
 				D215AC30233521B600E164C3 /* WKWebView.swift in Sources */,
+				B3D478032B021B5F001CD247 /* Intents.intentdefinition in Sources */,
 				D21DEE46260CB03900D8E640 /* PassphraseView.swift in Sources */,
 				D27AD9BC222FDD3D00379872 /* xcall.m in Sources */,
 				D29568B921BE629100480A83 /* bk_getopts.c in Sources */,
@@ -3179,6 +3335,16 @@
 			target = 07FABBAE25C9AECF00E1CC2C /* BlinkFiles */;
 			targetProxy = 98E7D0E6263971C000758CF9 /* PBXContainerItemProxy */;
 		};
+		B3D477F52B0219A4001CD247 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B3D477E92B0219A4001CD247 /* blinkAIUI */;
+			targetProxy = B3D477F42B0219A4001CD247 /* PBXContainerItemProxy */;
+		};
+		B3D477F92B0219A5001CD247 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B3D477DF2B0219A3001CD247 /* blinkAI */;
+			targetProxy = B3D477F82B0219A5001CD247 /* PBXContainerItemProxy */;
+		};
 		BD67FC84272DF22700C1EE75 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = BDCB715D268E1577007D7047 /* BlinkConfig */;
@@ -3259,6 +3425,14 @@
 				0716B52D1CFFAB9300268B5B /* Base */,
 			);
 			name = LaunchScreen.storyboard;
+			sourceTree = "<group>";
+		};
+		B3D477F02B0219A4001CD247 /* MainInterface.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				B3D477F12B0219A4001CD247 /* Base */,
+			);
+			name = MainInterface.storyboard;
 			sourceTree = "<group>";
 		};
 		BD9EA1CD2718E19000874007 /* MainInterface.storyboard */ = {
@@ -3682,6 +3856,196 @@
 				SKIP_INSTALL = YES;
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		B3D477FD2B0219A6001CD247 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CODE_SIGN_ENTITLEMENTS = blinkAIUI/blinkAIUI.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = blinkAIUI/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = blinkAIUI;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2023 Carlos Cabañero Projects SL. All rights reserved.";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jinher.iBlink1.blinkAIUI;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTS_MACCATALYST = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		B3D477FE2B0219A6001CD247 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CODE_SIGN_ENTITLEMENTS = blinkAIUI/blinkAIUI.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = blinkAIUI/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = blinkAIUI;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2023 Carlos Cabañero Projects SL. All rights reserved.";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.0;
+				MTL_FAST_MATH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jinher.iBlink1.blinkAIUI;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTS_MACCATALYST = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		B3D478002B0219A6001CD247 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CODE_SIGN_ENTITLEMENTS = blinkAI/blinkAI.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = blinkAI/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = blinkAI;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2023 Carlos Cabañero Projects SL. All rights reserved.";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jinher.iBlink1.blinkAI;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTS_MACCATALYST = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		B3D478012B0219A6001CD247 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CODE_SIGN_ENTITLEMENTS = blinkAI/blinkAI.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = blinkAI/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = blinkAI;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2023 Carlos Cabañero Projects SL. All rights reserved.";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.0;
+				MTL_FAST_MATH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jinher.iBlink1.blinkAI;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTS_MACCATALYST = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -4468,6 +4832,24 @@
 			buildConfigurations = (
 				98271270262E4BDB00F883FA /* Debug */,
 				98271271262E4BDB00F883FA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		B3D477FC2B0219A6001CD247 /* Build configuration list for PBXNativeTarget "blinkAIUI" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B3D477FD2B0219A6001CD247 /* Debug */,
+				B3D477FE2B0219A6001CD247 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		B3D477FF2B0219A6001CD247 /* Build configuration list for PBXNativeTarget "blinkAI" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B3D478002B0219A6001CD247 /* Debug */,
+				B3D478012B0219A6001CD247 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

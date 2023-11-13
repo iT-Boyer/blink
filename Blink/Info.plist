@@ -119,10 +119,10 @@
 	<string>Use Face ID with Auto Lock</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Allow geo command to track coordinates only while blink is running</string>
-	<key>NSSiriUsageDescription</key>
-	<string>storing commands</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Needed to transcribe audio</string>
+	<key>NSSiriUsageDescription</key>
+	<string>storing commands</string>
 	<key>NSUbiquitousContainers</key>
 	<dict>
 		<key>iCloud.sh.blink.blinkshell</key>
@@ -137,6 +137,8 @@
 	</dict>
 	<key>NSUserActivityTypes</key>
 	<array>
+		<string>INAddTasksIntent</string>
+		<string>PingIntent</string>
 		<string>com.blink.cmdline</string>
 		<string>com.blink.session</string>
 	</array>
