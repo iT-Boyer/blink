@@ -88,7 +88,6 @@
 		B37F43322A7DE2920038F155 /* ai.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37F43312A7DE2920038F155 /* ai.swift */; };
 		B37F43392A7DEDE60038F155 /* whisper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B37F43372A7DEDE60038F155 /* whisper.cpp */; };
 		B37F433A2A7DEDE60038F155 /* ggml.c in Sources */ = {isa = PBXBuildFile; fileRef = B37F43382A7DEDE60038F155 /* ggml.c */; };
-		B37F433E2A7DEE2A0038F155 /* LibWhisper.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37F433C2A7DEE2A0038F155 /* LibWhisper.swift */; };
 		B37F434E2A7DEF6D0038F155 /* Recorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37F434C2A7DEF6C0038F155 /* Recorder.swift */; };
 		B37F434F2A7DEF6D0038F155 /* RiffWaveUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37F434D2A7DEF6D0038F155 /* RiffWaveUtils.swift */; };
 		B37F43512A7DEF8A0038F155 /* WhisperState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37F43502A7DEF8A0038F155 /* WhisperState.swift */; };
@@ -772,8 +771,6 @@
 		B37F43362A7DEDE60038F155 /* whisper.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = whisper.h; path = ../whisper.cpp/whisper.h; sourceTree = "<group>"; };
 		B37F43372A7DEDE60038F155 /* whisper.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = whisper.cpp; path = ../whisper.cpp/whisper.cpp; sourceTree = "<group>"; };
 		B37F43382A7DEDE60038F155 /* ggml.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = ggml.c; path = ../whisper.cpp/ggml.c; sourceTree = "<group>"; };
-		B37F433C2A7DEE2A0038F155 /* LibWhisper.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LibWhisper.swift; sourceTree = "<group>"; };
-		B37F433D2A7DEE2A0038F155 /* WhisperCppDemo-Bridging-Header.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "WhisperCppDemo-Bridging-Header.h"; sourceTree = "<group>"; };
 		B37F434C2A7DEF6C0038F155 /* Recorder.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Recorder.swift; sourceTree = "<group>"; };
 		B37F434D2A7DEF6D0038F155 /* RiffWaveUtils.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RiffWaveUtils.swift; sourceTree = "<group>"; };
 		B37F43502A7DEF8A0038F155 /* WhisperState.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WhisperState.swift; sourceTree = "<group>"; };
@@ -1576,21 +1573,10 @@
 				B37F43352A7DEDE60038F155 /* ggml.h */,
 				B37F43372A7DEDE60038F155 /* whisper.cpp */,
 				B37F43362A7DEDE60038F155 /* whisper.h */,
-				B37F433B2A7DEE2A0038F155 /* whisper.cpp.swift */,
 				B37F434B2A7DEF3D0038F155 /* Demo */,
 				B37F433F2A7DEECF0038F155 /* Resources */,
 			);
 			name = Whisper.cpp;
-			sourceTree = "<group>";
-		};
-		B37F433B2A7DEE2A0038F155 /* whisper.cpp.swift */ = {
-			isa = PBXGroup;
-			children = (
-				B37F433C2A7DEE2A0038F155 /* LibWhisper.swift */,
-				B37F433D2A7DEE2A0038F155 /* WhisperCppDemo-Bridging-Header.h */,
-			);
-			name = whisper.cpp.swift;
-			path = ../whisper.cpp/examples/whisper.swiftui/whisper.cpp.swift;
 			sourceTree = "<group>";
 		};
 		B37F433F2A7DEECF0038F155 /* Resources */ = {
@@ -3157,7 +3143,6 @@
 				D27D0118261202A400128C23 /* KeyUIError.swift in Sources */,
 				07FAB8F425C8E6C500E1CC2C /* SSHConfig.swift in Sources */,
 				D2CF27292428A791009885ED /* KBTracker.swift in Sources */,
-				B37F433E2A7DEE2A0038F155 /* LibWhisper.swift in Sources */,
 				D2AD8E7927A2BAFA00DED28D /* PaywallView.swift in Sources */,
 				07F670771D05EEE200C0A53C /* SSHSession.m in Sources */,
 				D241CBD323040734003D64A5 /* KBSound.swift in Sources */,
