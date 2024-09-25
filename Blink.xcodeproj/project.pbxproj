@@ -94,6 +94,7 @@
 		B37F43532A7DEFB10038F155 /* WhisperView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37F43522A7DEFB10038F155 /* WhisperView.swift */; };
 		B37F43562A7DF7A70038F155 /* models in Resources */ = {isa = PBXBuildFile; fileRef = B37F43552A7DF7A60038F155 /* models */; };
 		B37F43582A7DF7C40038F155 /* samples in Resources */ = {isa = PBXBuildFile; fileRef = B37F43572A7DF7C40038F155 /* samples */; };
+		B3A91F212CA3E44400C59E9E /* LibWhisper.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3A91F1E2CA3E44400C59E9E /* LibWhisper.swift */; };
 		B3D477E12B0219A3001CD247 /* Intents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D2BF5F6B2659522C0070F839 /* Intents.framework */; };
 		B3D477E42B0219A3001CD247 /* IntentHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3D477E32B0219A3001CD247 /* IntentHandler.swift */; };
 		B3D477EC2B0219A4001CD247 /* IntentsUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B3D477EB2B0219A4001CD247 /* IntentsUI.framework */; };
@@ -777,6 +778,8 @@
 		B37F43522A7DEFB10038F155 /* WhisperView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WhisperView.swift; sourceTree = "<group>"; };
 		B37F43552A7DF7A60038F155 /* models */ = {isa = PBXFileReference; lastKnownFileType = folder; path = models; sourceTree = "<group>"; };
 		B37F43572A7DF7C40038F155 /* samples */ = {isa = PBXFileReference; lastKnownFileType = folder; path = samples; sourceTree = "<group>"; };
+		B3A91F1E2CA3E44400C59E9E /* LibWhisper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibWhisper.swift; sourceTree = "<group>"; };
+		B3A91F1F2CA3E44400C59E9E /* WhisperCppDemo-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "WhisperCppDemo-Bridging-Header.h"; sourceTree = "<group>"; };
 		B3D477E02B0219A3001CD247 /* blinkAI.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = blinkAI.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		B3D477E32B0219A3001CD247 /* IntentHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntentHandler.swift; sourceTree = "<group>"; };
 		B3D477E52B0219A3001CD247 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -1573,6 +1576,7 @@
 				B37F43352A7DEDE60038F155 /* ggml.h */,
 				B37F43372A7DEDE60038F155 /* whisper.cpp */,
 				B37F43362A7DEDE60038F155 /* whisper.h */,
+				B3A91F202CA3E44400C59E9E /* whisper.cpp.swift */,
 				B37F434B2A7DEF3D0038F155 /* Demo */,
 				B37F433F2A7DEECF0038F155 /* Resources */,
 			);
@@ -1599,6 +1603,16 @@
 			);
 			path = Demo;
 			sourceTree = "<group>";
+		};
+		B3A91F202CA3E44400C59E9E /* whisper.cpp.swift */ = {
+			isa = PBXGroup;
+			children = (
+				B3A91F1E2CA3E44400C59E9E /* LibWhisper.swift */,
+				B3A91F1F2CA3E44400C59E9E /* WhisperCppDemo-Bridging-Header.h */,
+			);
+			name = whisper.cpp.swift;
+			path = ../whisper.cpp/examples/whisper.swiftui/whisper.cpp.swift;
+			sourceTree = SOURCE_ROOT;
 		};
 		B3D477E22B0219A3001CD247 /* blinkAI */ = {
 			isa = PBXGroup;
@@ -3193,6 +3207,7 @@
 				07FAB8F525C8E6C500E1CC2C /* SSHConfigProvider.swift in Sources */,
 				D2AD8E7727A2BAFA00DED28D /* LegacyMigrationView.swift in Sources */,
 				D241CBD523040734003D64A5 /* KBKey.swift in Sources */,
+				B3A91F212CA3E44400C59E9E /* LibWhisper.swift in Sources */,
 				D215AC30233521B600E164C3 /* WKWebView.swift in Sources */,
 				B3D478032B021B5F001CD247 /* Intents.intentdefinition in Sources */,
 				D21DEE46260CB03900D8E640 /* PassphraseView.swift in Sources */,
