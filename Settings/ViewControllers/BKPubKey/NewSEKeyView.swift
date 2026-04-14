@@ -78,7 +78,7 @@ struct NewSEKeyView: View {
       trailing: Button("Create", action: _createKey)
       .disabled(!_state.isValid)
     )
-    .navigationBarTitle("New ECDSA Key")
+    .navigationBarTitle("New Secure Enclave Key")
     .alert(errorMessage: $_state.errorMessage)
     .onAppear(perform: {
       FixedTextField.becomeFirstReponder(id: "keyName")
@@ -95,7 +95,7 @@ struct NewSEKeyView: View {
 fileprivate class NewSEKeyObservable: ObservableObject {
   
   @Published var keyName = ""
-  @Published var keyComment = "\(BKDefaults.defaultUserName() ?? "")@\(UIDevice.getInfoType(fromDeviceName: BKDeviceInfoTypeDeviceName) ?? "")"
+  @Published var keyComment = "\(BLKDefaults.defaultUserName() ?? "")@\(UIDevice.getInfoType(fromDeviceName: BKDeviceInfoTypeDeviceName) ?? "")"
   
   @Published var errorMessage = ""
   

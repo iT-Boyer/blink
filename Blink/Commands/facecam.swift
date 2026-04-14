@@ -31,9 +31,11 @@
 
 
 import Foundation
-import NonStdIO
 import ArgumentParser
 import AVFoundation
+
+import ios_system
+
 
 struct FaceCam: NonStdIOCommand {
   static var configuration = CommandConfiguration(
@@ -44,7 +46,7 @@ struct FaceCam: NonStdIOCommand {
   )
   
   @OptionGroup var verboseOptions: VerboseOptions
-  var io = NonStdIO.standart
+  var io = NonStdIO.standard
   
   struct On: NonStdIOCommand {
     static var configuration = CommandConfiguration(
@@ -53,7 +55,7 @@ struct FaceCam: NonStdIOCommand {
     )
     
     @OptionGroup var verboseOptions: VerboseOptions
-    var io = NonStdIO.standart
+    var io = NonStdIO.standard
     
     func run() throws {
       var sema: DispatchSemaphore? = nil
@@ -91,7 +93,21 @@ struct FaceCam: NonStdIOCommand {
       let session = Unmanaged<MCPSession>.fromOpaque(thread_context).takeUnretainedValue()
       DispatchQueue.main.async {
         if let spcCtrl = session.device.view.window?.rootViewController as? SpaceController {
-          FaceCamManager.attach(spaceCtrl: spcCtrl)
+          if #available(iOS 16.0, *) {            
+            #if targetEnvironment(macCatalyst)
+            var multitaskCameraAccessSupported = false;
+            #else
+            var multitaskCameraAccessSupported = AVCaptureSession().isMultitaskingCameraAccessSupported
+            #endif
+            
+            if multitaskCameraAccessSupported {
+              PipFaceCamManager.attach(spaceCtrl: spcCtrl)
+            } else {
+              FaceCamManager.attach(spaceCtrl: spcCtrl)
+            }
+          } else {
+            FaceCamManager.attach(spaceCtrl: spcCtrl)
+          }
         }
       }
       
@@ -104,12 +120,13 @@ struct FaceCam: NonStdIOCommand {
     )
     
     @OptionGroup var verboseOptions: VerboseOptions
-    var io = NonStdIO.standart
+    var io = NonStdIO.standard
     
     func run() throws {
       print("See you next time!")
       DispatchQueue.main.async {
         FaceCamManager.turnOff()
+        PipFaceCamManager.turnOff()
       }
     }
   }
@@ -121,7 +138,7 @@ public func facecam_main(argc: Int32, argv: Argv) -> Int32 {
   setvbuf(thread_stdout, nil, _IONBF, 0)
   setvbuf(thread_stderr, nil, _IONBF, 0)
 
-  let io = NonStdIO.standart
+  let io = NonStdIO.standard
   io.out = OutputStream(file: thread_stdout)
   io.err = OutputStream(file: thread_stderr)
   

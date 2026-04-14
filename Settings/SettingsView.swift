@@ -35,51 +35,61 @@ import SwiftUI
 import LocalAuthentication
 
 struct SettingsView: View {
-  
+
   @EnvironmentObject private var _nav: Nav
   @State private var _biometryType = LAContext().biometryType
   @State private var _blinkVersion = UIApplication.blinkShortVersion() ?? ""
   @State private var _iCloudSyncOn = BKUserConfigurationManager.userSettingsValue(forKey: BKUserConfigiCloud)
   @State private var _autoLockOn = BKUserConfigurationManager.userSettingsValue(forKey: BKUserConfigAutoLock)
-  @State private var _xCallbackUrlOn = BKDefaults.isXCallBackURLEnabled()
-  @State private var _defaultUser = BKDefaults.defaultUserName() ?? ""
-  @ObservedObject private var _entitlements: EntitlementsManager = .shared
-  
+  @State private var _defaultUser = BLKDefaults.defaultUserName() ?? ""
+  @StateObject private var _entitlements: EntitlementsManager = .shared
+  @StateObject private var _model = PurchasesUserModel.shared
+  @State private var _displayBlinkClassicToPlus = false
+
   var body: some View {
     List {
-      if FeatureFlags.checkReceipt {        
-        Section(header: Text("Information"), footer: Text("Upgrade is free for you. Thanks for your support. ❤️")) {
+      if _entitlements.earlyAccessFeatures.active && _entitlements.earlyAccessFeatures.period == .Trial {
+        Section {
           Row {
-            HStack {
-              Label("New Blink.app", systemImage: "exclamationmark.circle")
-              Spacer()
-              Image(systemName: "questionmark.circle").foregroundColor(Color(UIColor.blinkTint))
-            }
+            Label(title: {
+                    VStack(alignment: .leading, spacing: 1) {
+                      Text("Need extra help?")
+                      Text("Don't be shy. We want Blink to work for you. Ask us questions during your trial.").foregroundColor(.secondary).font(.subheadline)
+                    }
+                  }, icon: { Image(systemName: "questionmark.bubble") })
           } details: {
-            ScrollView {
-              ExplanationView()
+            TrialSupportView()
           }
+        } header: {
+          Text("Trial support")
         }
       }
-      } else {
-        Section("Subscription") {
+
+      Section("Subscription") {
+        HStack {
+          Label(_entitlements.currentPlanName(), systemImage: "bag")
+          Spacer()
+          if !(_entitlements.earlyAccessFeatures.active || FeatureFlags.earlyAccessFeatures) {
+            Button("Get Blink+") { _displayBlinkClassicToPlus = true }
+          }
+        }
+        if _entitlements.earlyAccessFeatures.active {
           Row {
             HStack {
-              Label("Subscription", systemImage: "bag")
+              Label("Build Beta", systemImage: "hammer.circle")
               Spacer()
-              Text(_entitlements.currentPlanName())
+              if _entitlements.earlyAccessFeatures.period == .Trial {
+                Text("Needs Blink+")
+              } else {
+                Text("") // TODO: show status?
                   .foregroundColor(.secondary)
+              }
             }
           } details: {
-            PlansView()
-          }
-          Row {
-            HStack {
-              Label("For Blink 14 Owners", systemImage: "14.square")
-            }
-          } details: {
-            BlinkClassPlanView()
-          }
+              BuildView().onAppear(perform: {
+                BuildAccountModel.shared.checkBuildToken(animated: false)
+              })
+          }.disabled(_entitlements.earlyAccessFeatures.period != .Normal)
         }
       }
       Section("Connect") {
@@ -93,6 +103,11 @@ struct SettingsView: View {
         } details: {
           HostListView()
         }
+        Row {
+          Label("Default Agent", systemImage: "key.viewfinder")
+        } details: {
+          DefaultAgentSettingsView()
+        }
         RowWithStoryBoardId(content: {
           HStack {
             Label("Default User", systemImage: "person")
@@ -101,11 +116,18 @@ struct SettingsView: View {
           }
         }, storyBoardId: "BKDefaultUserViewController")
       }
-      
+
       Section("Terminal") {
-        RowWithStoryBoardId(content: {
-          Label("Appearance", systemImage: "paintpalette")
-        }, storyBoardId: "BKAppearanceViewController")
+        Row {
+          Label("Style", systemImage: "paintpalette")
+        } details: {
+          StyleCustomizationView()
+        }
+        Row {
+          Label("Display", systemImage: "display")
+        } details: {
+          DisplaySettingsView()
+        }
         Row {
           Label("Keyboard", systemImage: "keyboard")
         } details: {
@@ -127,8 +149,20 @@ struct SettingsView: View {
         }
 #endif
       }
-      
+
       Section("Configuration") {
+        Row {
+          Label("Bookmarks", systemImage: "bookmark")
+        } details: {
+          BookmarkedLocationsView()
+        }
+
+        Row {
+          Label("Snips", systemImage: "chevron.left.square")
+        } details: {
+          SnippetsConfigView()
+        }
+
         RowWithStoryBoardId(content: {
           HStack {
             Label("iCloud Sync", systemImage: "icloud")
@@ -136,7 +170,7 @@ struct SettingsView: View {
             Text(_iCloudSyncOn ? "On" : "Off").foregroundColor(.secondary)
           }
         }, storyBoardId: "BKiCloudConfigurationViewController")
-        
+
         RowWithStoryBoardId(content: {
           HStack {
             Label("Auto Lock", systemImage: _biometryType == .faceID ? "faceid" : "touchid")
@@ -144,38 +178,31 @@ struct SettingsView: View {
             Text(_autoLockOn ? "On" : "Off").foregroundColor(.secondary)
           }
         }, storyBoardId: "BKSecurityConfigurationViewController")
-        RowWithStoryBoardId(content: {
-          HStack {
-            Label("X Callback Url", systemImage: "link")
-            Spacer()
-            Text(_xCallbackUrlOn ? "On" : "Off").foregroundColor(.secondary)
-          }
-        }, storyBoardId: "BKXCallBackUrlConfigurationViewController")
       }
-      
+
       Section("Get in touch") {
-        Row {
-          Label("Feedback", systemImage: "bubble.left")
-        } details: {
-          FeedbackView()
-        }
         Row {
           Label("Support", systemImage: "book")
         } details: {
           SupportView()
         }
-        HStack {
-          Button {
-            BKLinkActions.sendToAppStore()
-          } label: {
-            Label("Rate Blink", systemImage: "star")
-          }
-          
-          Spacer()
-          Text("App Store").foregroundColor(.secondary)
+        Row {
+          Label("Community", systemImage: "bubble.left")
+        } details: {
+          FeedbackView()
         }
+        // HStack {
+        //   Button {
+        //     BKLinkActions.sendToAppStore()
+        //   } label: {
+        //     Label("Rate Blink", systemImage: "star")
+        //   }
+
+        //   Spacer()
+        //   Text("App Store").foregroundColor(.secondary)
+        // }
       }
-      
+
       Section {
         RowWithStoryBoardId(content: {
           HStack {
@@ -184,16 +211,53 @@ struct SettingsView: View {
             Text(_blinkVersion).foregroundColor(.secondary)
           }
         }, storyBoardId: "BKAboutViewController")
+        HStack {
+          Button {
+            _model.openPrivacyAndPolicy()
+          } label: {
+            Label("Privacy Policy", systemImage: "link")
+          }
+        }
+        HStack {
+          Button {
+            _model.openTermsOfUse()
+          } label: {
+            Label("Terms of Use", systemImage: "link")
+          }
+        }
       }
     }
     .onAppear {
       _iCloudSyncOn = BKUserConfigurationManager.userSettingsValue(forKey: BKUserConfigiCloud)
       _autoLockOn = BKUserConfigurationManager.userSettingsValue(forKey: BKUserConfigAutoLock)
-      _xCallbackUrlOn = BKDefaults.isXCallBackURLEnabled()
-      _defaultUser = BKDefaults.defaultUserName() ?? ""
+      _defaultUser = BLKDefaults.defaultUserName() ?? ""
+
     }
     .listStyle(.grouped)
     .navigationTitle("Settings")
-    
+    .sheet(isPresented: $_displayBlinkClassicToPlus) {
+      BlinkClassicToPlusWindow(urlHandler: blink_openurl, dismissHandler: { _displayBlinkClassicToPlus = false })
+    }
+
+  }
+}
+
+fileprivate struct BlinkClassicToPlusWindow: View {
+  let urlHandler: (URL) -> ()
+  let dismissHandler: () -> ()
+
+  @Environment(\.dynamicTypeSize) var dynamicTypeSize
+
+  var body: some View {
+    GeometryReader { proxy in
+      let ctx = PageCtx(
+        proxy: proxy,
+        dynamicTypeSize: dynamicTypeSize
+      )
+
+      NewOfferingsView(classicOffering: true, ctx: ctx, purchaseCompletedHandler: dismissHandler, urlHandler: urlHandler, dismissHandler: dismissHandler)
+        .frame(width: proxy.size.width, height: proxy.size.height)
+    }
+    .background(.black)
   }
 }

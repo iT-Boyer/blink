@@ -41,12 +41,13 @@ import SSH
 class SSHPool {
   static let shared = SSHPool()
   private var controls: [SSHClientControl] = []
-  
+  private let queue = DispatchQueue(label: "SSHPoolControlQueue", attributes: .concurrent)
+
   private init() {}
 
-  static func dial(_ host: String, 
-                   with config: SSHClientConfig, 
-                   withControlMaster: ControlMasterOption = .no, 
+  static func dial(_ host: String,
+                   with config: SSHClientConfig,
+                   withControlMaster: ControlMasterOption = .no,
                    withProxy proxy: SSH.SSHClient.ExecProxyCommandCallback? = nil) -> AnyPublisher<SSH.SSHClient, Error> {
 
     // Do not use an existing socket.
@@ -55,39 +56,45 @@ class SSHPool {
       // For now we will not allow that situation.
       return shared.startConnection(host, with: config, proxy: proxy, exposeSocket: false)
     }
-    guard let ctrl = shared.control(for: host, with: config) else {
-      return shared.startConnection(host, with: config, proxy: proxy)
+    if let ctrl = shared.control(for: host, with: config) {
+      if let conn = ctrl.connection, conn.isConnected {
+        return .just(conn)
+      } else {
+        shared.removeControl(ctrl)
+      }
     }
-    
-    guard let conn = ctrl.connection, conn.isConnected else {
-      shared.removeControl(ctrl)
-      return shared.startConnection(host, with: config, proxy: proxy)
-    }
-    
-    return .just(conn)
+
+    return shared.startConnection(host, with: config, proxy: proxy)
   }
 
   private func startConnection(_ host: String, with config: SSHClientConfig,
                                proxy: SSH.SSHClient.ExecProxyCommandCallback? = nil,
                                exposeSocket exposed: Bool = true) -> AnyPublisher<SSH.SSHClient, Error> {
     let pb = PassthroughSubject<SSH.SSHClient, Error>()
-    var cancel: AnyCancellable?
+    var dial: AnyCancellable?
     var runLoop: RunLoop!
 
     let t = Thread {
       runLoop = RunLoop.current
 
-      cancel = SSH.SSHClient.dial(host, with: config, withProxy: proxy)
-        .sink(receiveCompletion: { pb.send(completion: $0) },
-              receiveValue: { conn in
-                let control = SSHClientControl(for: conn, on: host, with: config, running: runLoop, exposed: exposed)
-                SSHPool.shared.controls.append(control)
-                pb.send(conn)
-        })
+      dial = SSH.SSHClient.dial(host, with: config, withProxy: proxy)
+        //.print("SSHClient Pool")
+        .sink(
+          receiveCompletion: { completion in
+            pb.send(completion: completion)
+          },
+          receiveValue: { [weak self] conn in
+            let control = SSHClientControl(for: conn, on: host, with: config, running: runLoop, exposed: exposed)
+            self?.queue.sync {
+              SSHPool.shared.controls.append(control)
+            }
+            pb.send(conn)
+          })
 
-      awaitRunLoop(runLoop)
-      // Make another run on the loop to close extra stuff in blocks.
-      RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.5))
+      // NOTE Before we let the Pool control the RunLoop, and the problem is that SSHClient needs to be in full control
+      // as it may have multiple nested runs internally. Using SSHClient.run, the SSHClient will continue until the object itself is fully disposed.
+      SSH.SSHClient.run()
+
       print("Pool Thread out")
     }
 
@@ -95,7 +102,7 @@ class SSHPool {
 
     return pb.buffer(size: 1, prefetch: .byRequest, whenFull: .dropOldest)
       .handleEvents(receiveCancel: {
-        cancel?.cancel()
+        dial = nil
       }).eraseToAnyPublisher()
   }
 
@@ -104,28 +111,27 @@ class SSHPool {
   }
 
   private static func control(on connection: SSH.SSHClient) -> SSHClientControl? {
-    shared.controls.first { $0.connection === connection }
+    shared.control(on: connection)
   }
-  
+
+  private func control(on connection: SSH.SSHClient) -> SSHClientControl? {
+    queue.sync {
+      controls.first { $0.connection === connection }
+    }
+  }
+
   private func control(for host: String, with config: SSHClientConfig) -> SSHClientControl? {
-    return controls.first { $0.isConnection(for: host, with: config) }
+    queue.sync {
+      controls.first { $0.isConnection(for: host, with: config) }
+    }
   }
-  
+
   private func enforcePersistance(_ control: SSHClientControl) {
     print("Current channels \(control.numChannels)")
     print("\(control.localTunnels)")
     print("\(control.remoteTunnels)")
     if control.numChannels == 0 {
-      // For now, we just stop the connection as is
-      // We could use a delegate just to notify when a connection is dead, and the control could
-      // take care of figuring out when the connection it contains must go.
-      awake(runLoop: control.runLoop)
-      let idx = controls.firstIndex { $0 === control }!
-      
-      // Removing references to connection to deinit.
-      // We could also handle the pool with references to the connection.
-      // But the shell or time based persistance may become more difficult.
-      controls.remove(at: idx)
+      self.removeControl(control)
     }
   }
 }
@@ -143,6 +149,7 @@ extension SSHPool {
     // NOTE This is a workaround
     c.streams.forEach { (_, s) in s.cancel() }
     c.streams = []
+    shared.enforcePersistance(c)
   }
 }
 
@@ -155,7 +162,7 @@ extension SSHPool {
       c.numShells += 1
     }
   }
-  
+
   static func deregister(shellOn connection: SSH.SSHClient) {
     guard let c = control(on: connection) else {
       return
@@ -167,13 +174,13 @@ extension SSHPool {
 
 // Forward Tunnels
 extension SSHPool {
-  static func register(_ listener: SSHPortForwardListener, 
-                       portForwardInfo: PortForwardInfo, 
+  static func register(_ listener: SSHPortForwardListener,
+                       portForwardInfo: PortForwardInfo,
                        on connection: SSH.SSHClient) {
     let c = control(on: connection)
     c?.localTunnels[portForwardInfo] = listener
   }
-  
+
   static func deregister(localForward: PortForwardInfo, on connection: SSH.SSHClient) {
     guard let c = control(on: connection) else {
       return
@@ -188,15 +195,15 @@ extension SSHPool {
     guard let c = control(on: connection) else {
       return false
     }
-    
+
     return c.localTunnels[localForward] != nil
   }
 }
 
 // Remote Tunnels
 extension SSHPool {
-  static func register(_ client: SSHPortForwardClient, 
-                       portForwardInfo: PortForwardInfo, 
+  static func register(_ client: SSHPortForwardClient,
+                       portForwardInfo: PortForwardInfo,
                        on connection: SSH.SSHClient) {
     let c = control(on: connection)
     c?.remoteTunnels[portForwardInfo] = client
@@ -216,7 +223,7 @@ extension SSHPool {
     guard let c = control(on: connection) else {
       return false
     }
-    
+
     return c.remoteTunnels[remoteForward] != nil
   }
 }
@@ -244,7 +251,7 @@ extension SSHPool {
     guard let c = control(on: connection) else {
       return false
     }
-    
+
     return c.socks[socksBindAddress] != nil
   }
 }
@@ -254,15 +261,23 @@ extension SSHPool {
     let c = control(on: connection)
     c?.streams.append((command, stream))
   }
-  
+
   private func removeControl(_ control: SSHClientControl) {
-    awake(runLoop: control.runLoop)
-    guard
-      let idx = controls.firstIndex(where: { $0 === control })
-    else {
-      return
+    queue.async(flags: .barrier) {
+      // For now, we just stop the connection as is
+      // We could use a delegate just to notify when a connection is dead, and the control could
+      // take care of figuring out when the connection it contains must go.
+      guard
+        let idx = self.controls.firstIndex(where: { $0 === control })
+      else {
+        return
+      }
+
+      // Removing references to connection to deinit.
+      // We could also handle the pool with references to the connection.
+      // But the shell or time based persistance may become more difficult.
+      self.controls.remove(at: idx)
     }
-    controls.remove(at: idx)
   }
 }
 
@@ -272,7 +287,7 @@ fileprivate class SSHClientControl {
   let config: SSHClientConfig
   let runLoop: RunLoop
   let exposed: Bool
-  
+
   var numShells: Int = 0
   //var shells: [(SSHCommand, SSH.Stream)] = []
 
@@ -287,7 +302,7 @@ fileprivate class SSHClientControl {
       return numShells + streams.count + localTunnels.count + remoteTunnels.count + socks.count
     }
   }
-  
+
   init(for connection: SSH.SSHClient, on host: String, with config: SSHClientConfig, running runLoop: RunLoop, exposed: Bool) {
     self.connection = connection
     self.host = host
@@ -295,8 +310,8 @@ fileprivate class SSHClientControl {
     self.runLoop = runLoop
     self.exposed = exposed
   }
-  
-  
+
+
   // Other parameters could specify how the connection should be treated by the pool
   // (timeouts, etc...)
   func isConnection(for host: String, with config: SSHClientConfig) -> Bool {
@@ -307,7 +322,7 @@ fileprivate class SSHClientControl {
     return self.host == host && config == self.config ? true : false
   }
 }
-/* 
+/*
 fileprivate protocol TunnelControl {
   func close()
 }
@@ -330,4 +345,3 @@ extension OptionalBindAddressInfo: Hashable {
     hasher.combine(self.port)
   }
 }
-

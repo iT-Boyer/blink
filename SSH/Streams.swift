@@ -161,6 +161,11 @@ public class Stream : Reader, Writer, WriterTo {
     return outstream.read(max: length)
   }
   
+  public func read_err(max length: Int) -> AnyPublisher<DispatchData, Error> {
+    let errstream = OutStream(self, isStderr: true)
+    return errstream.read(max: length)
+  }
+  
   public func write(_ buf: DispatchData, max length: Int) -> AnyPublisher<Int, Error> {
     let instream = InStream(self)
     return instream.write(buf, max: length)
@@ -204,9 +209,10 @@ public class Stream : Reader, Writer, WriterTo {
   
   public func cancel() {
     self.log.message("Stream Cancelled", SSH_LOG_INFO)
-    stdoutCancellable?.cancel()
-    stdinCancellable?.cancel()
-    stderrCancellable?.cancel()
+    // Make it nil so everything associated with the flow is also disposed (self-retentions).
+    stdoutCancellable = nil
+    stdinCancellable = nil
+    stderrCancellable = nil
   }
   
   deinit {
@@ -244,7 +250,7 @@ class OutStream {
   
   deinit {
     if self.isStderr == 1 {
-      log.message("Errstream deinit", SSH_LOG_DEBUG)
+      log.message("Errstream deinit", SSH_LOG_INFO)
     } else {
       log.message("Outstream deinit", SSH_LOG_INFO)
     }

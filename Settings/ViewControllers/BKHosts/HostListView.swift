@@ -108,41 +108,72 @@ struct HostListView: View {
   
   var body: some View {
     Group {
-      if _state.filteredList.isEmpty {
-        Button(
-          action: _addHost,
-          label: { Label("Add new host", systemImage: "plus") }
+      if _state.list.isEmpty {
+        EmptyStateView(
+          action:Button(
+            action: _addHost,
+            label: { Label("Add new Host", systemImage: "plus") }
+          ),
+          systemIconName: "server.rack"
         )
       } else {
-          List {
-            ForEach(_state.filteredList, id: \.alias) {
-              HostRow(card: $0, reloadList: _state.reloadHosts)
-            }.onDelete(perform: _state.deleteHosts)
-          }
-          .listStyle(InsetGroupedListStyle())
-          .navigationBarItems(
-            trailing: HStack {
-              Menu {
-                Section(header: Text("Order")) {
-                  SortButton(label: "Alias",    sortType: $_state.sortType, asc: .aliasAsc, desc: .aliasDesc)
-                  SortButton(label: "HostName", sortType: $_state.sortType, asc: .hostNameAsc, desc: .hostNameDesc)
-                }
-              } label: { Image(systemName: "list.bullet").frame(width: 38, height: 38, alignment: .center) }
-              Button(
+        Group {
+          if _state.filteredList.isEmpty {
+            EmptyStateView(
+              action:Button(
                 action: _addHost,
-                label: { Image(systemName: "plus").frame(width: 38, height: 38, alignment: .center) }
+                label: { Label("Add new Host", systemImage: "plus") }
+              ),
+              systemIconName: "server.rack"
+            )
+          } else {
+              List {
+                ForEach(Array(_state.filteredList.enumerated()), id: \.element.alias) { index, card in
+                  HostRow(card: card, reloadList: _state.reloadHosts)
+                    .contextMenu(menuItems: {
+                      Button(action: {
+                        _duplicateHost(card: card)
+                      }, label: { Label("Duplicate", systemImage: "plus.square.on.square")})
+                      Divider()
+                      Button(role: .destructive, action: {
+                        _state.deleteHosts(indexSet: IndexSet([index]))
+                      }, label: { Label("Delete", systemImage: "trash") })
+                    })
+                }.onDelete(perform: _state.deleteHosts)
+              }
+              .listStyle(InsetGroupedListStyle())
+              .navigationBarItems(
+                trailing: HStack {
+                  Menu {
+                    Section(header: Text("Order")) {
+                      SortButton(label: "Alias",    sortType: $_state.sortType, asc: .aliasAsc, desc: .aliasDesc)
+                      SortButton(label: "HostName", sortType: $_state.sortType, asc: .hostNameAsc, desc: .hostNameDesc)
+                    }
+                  } label: { Image(systemName: "list.bullet").frame(width: 38, height: 38, alignment: .center) }
+                  Button(
+                    action: _addHost,
+                    label: { Image(systemName: "plus").frame(width: 38, height: 38, alignment: .center) }
+                  )
+                }
               )
-            }
-          )
+          }
+        }
+        .searchable(text: $_state.filterQuery)
       }
     }
     .onAppear(perform: _state.startSync)
     .navigationBarTitle("Hosts")
-    .searchable(text: $_state.filterQuery)
+    
   }
   
   private func _addHost() {
     let rootView = HostView(host: nil, reloadList: _state.reloadHosts).environmentObject(_nav)
+    let vc = UIHostingController(rootView: rootView)
+    _nav.navController.pushViewController(vc, animated: true)
+  }
+  
+  private func _duplicateHost(card: HostCard) {
+    let rootView = HostView(duplicatingHost: card.host, reloadList:  _state.reloadHosts).environmentObject(_nav)
     let vc = UIHostingController(rootView: rootView)
     _nav.navController.pushViewController(vc, animated: true)
   }
@@ -238,7 +269,7 @@ fileprivate class HostsObservable: ObservableObject {
     BKHosts.forceSave()
     filteredList.remove(atOffsets: indexSet)
     reloadHosts()
+    
+    _NSFileProviderManager.syncWithBKHosts()
   }
 }
-
-

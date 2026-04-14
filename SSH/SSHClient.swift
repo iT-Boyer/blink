@@ -54,8 +54,8 @@ func ssh_init_channel_callbacks(_ cb: inout ssh_channel_callbacks_struct) {
 
 public class SSHClient {
   let session: ssh_session
-  let host: String
-  let options: SSHClientConfig
+  public let host: String
+  public let options: SSHClientConfig
   let log: SSHLogger
   
   public typealias ExecProxyCommandCallback = (String, Int32, Int32) -> Void
@@ -69,6 +69,18 @@ public class SSHClient {
   
   public var isConnected: Bool {
     ssh_is_connected(session) == 1
+  }
+
+  public var agent: SSHAgent? {
+    self.options.agent
+  }
+  
+  public var issueBanner: String? {
+    if isConnected,
+       let banner = ssh_get_issue_banner(session) {
+      return String(cString: banner, encoding: .utf8)
+    }
+    return nil
   }
 
   // When a connection is local, we consider it trusted and we use this flag to indicate that
@@ -159,14 +171,6 @@ public class SSHClient {
     if options.sshDirectory != nil {
       try _setSessionOption(SSH_OPTIONS_SSH_DIR, options.sshDirectory)
     }
-    
-    /// Parse `~/.ssh/config` file.
-    /// This should be the last call of all options, it may overwrite options which are already set.
-    /// It requires that the host name is already set with ssh_options_set_host().
-    if let sshConfigPath = options.sshClientConfigPath,
-       ssh_options_parse_config(session, sshConfigPath) != SSH_OK {
-      throw SSHError(title: "Could not parse config file at \(self.options.sshClientConfigPath ?? "<nil>") for session")
-    }
 
     if let ciphers = options.ciphers {
       try _setSessionOption(SSH_OPTIONS_CIPHERS_C_S, ciphers)
@@ -208,6 +212,18 @@ public class SSHClient {
     if var pubKeyAuthentication = options.pubKeyAuthentication {
       try _setSessionOption(SSH_OPTIONS_PUBKEY_AUTH, &pubKeyAuthentication)
     }
+    
+    /// Parse `~/.ssh/config` file.
+    /// This should be the last call of all options, it may overwrite options which are already set.
+    /// It requires that the host name is already set with ssh_options_set_host().
+    if let sshConfigPath = options.sshClientConfigPath,
+       ssh_options_parse_config(session, sshConfigPath) != SSH_OK {
+      throw SSHError(title: "Could not parse config file at \(self.options.sshClientConfigPath ?? "<nil>") for session")
+    } else {
+      // Adding this atm may actually break the configuration for others. The config file is still processed.
+      var processConfig = false
+      try _setSessionOption(SSH_OPTIONS_PROCESS_CONFIG, &processConfig)
+    }
   }
   
   private func _setSessionOption(_ option: ssh_options_e, _ value: UnsafeRawPointer!) throws {
@@ -248,7 +264,8 @@ public class SSHClient {
     callbacks.session_exception_function = { (session, userdata) in
       // Pass the callback to the other side, and let that wrap up this
       // connection, but also start a new one if necessary.
-      let ctxt = Unmanaged<SSHClient>.fromOpaque(userdata!).takeUnretainedValue()
+      guard let userdata = userdata else { return }
+      let ctxt = Unmanaged<SSHClient>.fromOpaque(userdata).takeUnretainedValue()
       let error = SSHError(title: "Session Exception", forSession: session)
       ctxt.log.message("\(error)", SSH_LOG_WARN)
       ctxt.handleSessionException?(error)
@@ -256,11 +273,20 @@ public class SSHClient {
     
     if options.proxyCommand != nil || options.proxyJump != nil {
       callbacks.set_proxycommand_function = { (cmd, inSock, outSock, userdata) in
-        let ctxt = Unmanaged<SSHClient>.fromOpaque(userdata!).takeUnretainedValue()
+        guard let userdata = userdata else { return }
+
+        let ctxt = Unmanaged<SSHClient>.fromOpaque(userdata).takeUnretainedValue()
         let command = String(cString: cmd!)
         // Will break if unconfigured. It can be considered
         // a code error.
-        return ctxt.proxyCb!(command, inSock, outSock)
+        guard let proxyCb = ctxt.proxyCb else {
+          ctxt.log.message("No proxy callback configured. Cannot run ProxyCommand", SSH_LOG_WARN)
+          shutdown(inSock, SHUT_RDWR)
+          shutdown(outSock, SHUT_RDWR)
+          return
+        }
+        
+        return proxyCb(command, inSock, outSock)
       }
     }
     
@@ -269,8 +295,8 @@ public class SSHClient {
   
   func connection() -> SSHConnection {
     AnyPublisher
-      .just(self.session).print("Before rloop")
-      .subscribe(on: rloop).print("After rloop")
+      .just(self.session)//.print("Before rloop")
+      .subscribe(on: rloop)//.print("After rloop")
       .eraseToAnyPublisher()
   }
   
@@ -535,7 +561,7 @@ public class SSHClient {
       log.message("Trying \(method.displayName)...", SSH_LOG_INFO)
       
       return method
-        .auth(connection())
+        .auth(user: self.options.user, host: self.host, on: connection())
         .flatMap { result -> AnyPublisher<SSHClient, Error> in
           switch result {
           case .success:
@@ -851,9 +877,25 @@ public class SSHClient {
     }
   }
   
+  public static func run(withTimer: Bool = false) {
+    if withTimer {
+      let timer = Timer(timeInterval: TimeInterval(1), repeats: true) { _ in
+        //print("timer")
+      }
+      RunLoop.current.add(timer, forMode: .default)
+    }
+    CFRunLoopRunInMode(.defaultMode, TimeInterval(INT_MAX), false)
+  }
+  
   deinit {
-    self.log.message("Session deinit", SSH_LOG_INFO)
+    print("SSH Session deinit")
+    self.log.message("SSH Session deinit", SSH_LOG_INFO)
+    // NOTE Disconnecting the socket from the RunLoop won't free it (?), so we still need to stop it.
+    // Theory here was that once the socket is disconnected from the RunLoop, there is nothing else in the RunLoop so it would
+    // automatically wake. But it needs the extra nagging.
+    // ssh_disconnect(session)
     ssh_free(session)
+    CFRunLoopStop(self.rloop.getCFRunLoop())
   }
 }
 
@@ -884,13 +926,17 @@ public enum SSHLogLevel: Int {
   }
 }
 
-class SSHLogger {
+public class SSHLogger {
   let verbosity: SSHLogLevel
   let logger: SSHLogPublisher?
   
-  init(verbosity level: SSHLogLevel, logger: SSHLogPublisher?) {
+  public init(verbosity level: SSHLogLevel, logger: SSHLogPublisher?) {
     self.verbosity = level
     self.logger = logger
+  }
+  
+  public func message(_ message: String, _ level: SSHLogLevel) {
+    self.message(message, Int32(level.rawValue))
   }
   
   func message(_ message: String, _ level: Int32) {

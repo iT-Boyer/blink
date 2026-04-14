@@ -89,8 +89,8 @@ public class SFTPClient {
   }
   
   deinit {
-    print("SFTP Out!!")
     self.client.closeSFTP(sftp)
+    print("SFTP Out!!")
   }
 }
 
@@ -102,7 +102,7 @@ public class SFTPTranslator: BlinkFiles.Translator {
   var rloop: RunLoop { sftpClient.rloop }
   var log: SSHLogger { get { sftpClient.log } }
 
-  var rootPath: String = ""
+  var rootPath: String? = nil
   var path: String = ""
   public var current: String { get { path }}
   public private(set) var fileType: FileAttributeType = .typeUnknown
@@ -113,11 +113,6 @@ public class SFTPTranslator: BlinkFiles.Translator {
   
   public init(on sftpClient: SFTPClient) throws {
     self.sftpClient = sftpClient
-    let (rootPath, fileType) = try self.canonicalize("")
-    
-    self.rootPath = rootPath
-    self.fileType = fileType
-    self.path = rootPath
   }
   
   init(from base: SFTPTranslator) {
@@ -131,7 +126,7 @@ public class SFTPTranslator: BlinkFiles.Translator {
     return .init(Just(sftp).subscribe(on: rloop).setFailureType(to: Error.self))
   }
   
-  func canonicalize(_ path: String) throws -> (String, FileAttributeType) {
+  private func canonicalize(_ path: String) throws -> (String, FileAttributeType) {
     ssh_channel_set_blocking(channel, 1)
     defer { ssh_channel_set_blocking(channel, 0) }
     
@@ -169,24 +164,34 @@ public class SFTPTranslator: BlinkFiles.Translator {
   
   // Resolve to an element in the hierarchy
   public func walkTo(_ path: String) -> AnyPublisher<Translator, Error> {
-    // All paths on SFTP, even Windows ones, must start with a slash (/c:/whatever/)
-    var absPath = path
-
-    // First cleanup the ~, and walk from rootPath
-    if absPath == "~" {
-      absPath = String(self.rootPath)
-    } else if let range = absPath.range(of: "~/", options: [.backwards]) {
-      absPath.removeSubrange(absPath.startIndex..<range.upperBound)
-      absPath = NSString(string: self.rootPath).appendingPathComponent(absPath)
-    }
-
-    // For a relative walk, append to current path.
-    if !absPath.starts(with: "/") {
-      // NSString performs a cleanup of the path as well.
-      absPath = NSString(string: self.path).appendingPathComponent(path)
-    }
-
     return connection().tryMap { sftp -> SFTPTranslator in
+      let rootPath = try self.rootPath ?? {
+          let (path, type) = try self.canonicalize("")
+          self.rootPath = path
+          self.fileType = type
+          return path
+      }()
+      
+      // All paths on SFTP, even Windows ones, must start with a slash (/c:/whatever/)
+      var absPath = path
+
+      // First cleanup the ~, and walk from rootPath
+      // ~ or /~ -> rootPath
+      // ./~ -> Can be a file or directory.
+      // foo/~/../bar/~/baz -> cleanup from rootPath
+      if absPath == "~" || absPath.hasSuffix("/~") {
+        absPath = String(rootPath)
+      } else if let range = absPath.range(of: "~/", options: [.backwards]) {
+        absPath.removeSubrange(absPath.startIndex..<range.upperBound)
+        absPath = NSString(string: rootPath).appendingPathComponent(absPath)
+      }
+
+      // For a relative walk, append to current path.
+      if !absPath.starts(with: "/") {
+        // NSString performs a cleanup of the path as well.
+        absPath = NSString(string: self.path).appendingPathComponent(path)
+      }
+      
       let (canonicalPath, type) = try self.canonicalize(absPath)
       
       self.path = canonicalPath
@@ -196,6 +201,34 @@ public class SFTPTranslator: BlinkFiles.Translator {
     }.eraseToAnyPublisher()
   }
   
+  public func join(_ path: String) throws -> Translator {
+    let rootPath = try self.rootPath ?? {
+      let (path, _) = try self.canonicalize("")
+      self.rootPath = path
+      return path
+    }()
+
+    var absPath = path
+
+    if absPath == "~" || absPath.hasSuffix("/~") {
+      absPath = String(rootPath)
+    } else if let range = absPath.range(of: "~/", options: [.backwards]) {
+      absPath.removeSubrange(absPath.startIndex..<range.upperBound)
+      absPath = NSString(string: rootPath).appendingPathComponent(absPath)
+    }
+
+    // For a relative walk, append to current path.
+    if !absPath.starts(with: "/") {
+      // NSString performs a cleanup of the path as well.
+      absPath = NSString(string: self.path).appendingPathComponent(path)
+    }
+
+    self.path = absPath
+    self.fileType = .typeUnknown
+
+    return self
+  }
+
   public func directoryFilesAndAttributes() -> AnyPublisher<[FileAttributes], Error> {
     if fileType != .typeDirectory {
       return .fail(error: FileError(title: "Not a directory.", in: session))
@@ -244,7 +277,7 @@ public class SFTPTranslator: BlinkFiles.Translator {
     }.eraseToAnyPublisher()
   }
   
-  public func create(name: String, flags: Int32, mode: mode_t = S_IRWXU) -> AnyPublisher<BlinkFiles.File, Error> {
+  public func create(name: String, mode: mode_t = S_IRWXU) -> AnyPublisher<BlinkFiles.File, Error> {
     if fileType != .typeDirectory {
       return .fail(error: FileError(title: "Not a directory.", in: session))
     }
@@ -254,7 +287,7 @@ public class SFTPTranslator: BlinkFiles.Translator {
       defer { ssh_channel_set_blocking(self.channel, 0) }
       
       let filePath = (self.path as NSString).appendingPathComponent(name)
-      guard let file = sftp_open(sftp, filePath, flags | O_CREAT, mode) else {
+      guard let file = sftp_open(sftp, filePath, O_WRONLY|O_CREAT|O_TRUNC, mode) else {
         throw FileError(in: self.session)
       }
       
@@ -294,7 +327,7 @@ public class SFTPTranslator: BlinkFiles.Translator {
   
   // Mode uses same default as mkdir
   // This is working well for filesystems, but everything else...
-  public func mkdir(name: String, mode: mode_t = S_IRWXU | S_IRWXG | S_IRWXO) -> AnyPublisher<Translator, Error> {
+  public func mkdir(name: String, mode: mode_t) -> AnyPublisher<Translator, Error> {
     return connection().tryMap { sftp -> Translator in
       ssh_channel_set_blocking(self.channel, 1)
       defer { ssh_channel_set_blocking(self.channel, 0) }
@@ -480,6 +513,10 @@ public class SFTPFile : BlinkFiles.File {
       return true
     }.eraseToAnyPublisher()
   }
+  
+  deinit {
+    print("SFTP file out")
+  }
 }
 
 extension SFTPFile: BlinkFiles.Reader, BlinkFiles.WriterTo {
@@ -502,12 +539,16 @@ extension SFTPFile: BlinkFiles.Reader, BlinkFiles.WriterTo {
                         receiveRequest: receiveRequest(_:),
                         on: rloop)
       .flatMap(maxPublishers: .max(1)) { data -> AnyPublisher<Int, Error> in
+        self.log.message("WRITING \(data.count)", SSH_LOG_DEBUG)
         return w.write(data, max: data.count)
-      }.eraseToAnyPublisher()
+      }
+      .print()
+      .eraseToAnyPublisher()
   }
   
   private func receiveRequest(_ req: Subscribers.Demand) {
     self.demand = req
+    self.log.message("Received read request. Current demand \(self.demand).", SSH_LOG_DEBUG)
     self.inflightReadsLoop()
   }
 
@@ -533,6 +574,8 @@ extension SFTPFile: BlinkFiles.Reader, BlinkFiles.WriterTo {
       }
     }
     
+    self.log.message("Scheduled reads \(inflightReads.count). Current demand \(self.demand).", SSH_LOG_DEBUG)
+
     // Schedule more blocks to read. This way data will already be ready when we come back.
     while isComplete == false && inflightReads.count < self.maxConcurrentOps {
       let asyncRequest = sftp_async_read_begin(self.file, UInt32(self.blockSize))
@@ -542,7 +585,7 @@ extension SFTPFile: BlinkFiles.Reader, BlinkFiles.WriterTo {
       }
       inflightReads.append(UInt32(asyncRequest))
     }
-    
+        
     if let data = data, data.count > 0 {
       pub.send(data)
       // TODO Account for demand here
@@ -551,6 +594,8 @@ extension SFTPFile: BlinkFiles.Reader, BlinkFiles.WriterTo {
       }
     }
     
+    self.log.message("Next reads \(inflightReads.count). Current demand \(self.demand).", SSH_LOG_DEBUG)
+
     if isComplete {
       pub.send(completion: .finished)
       return
@@ -558,6 +603,7 @@ extension SFTPFile: BlinkFiles.Reader, BlinkFiles.WriterTo {
 
     // Enqueue again if there is still demand.
     if self.demand != .none {
+      self.log.message("Enqueuing next read block", SSH_LOG_DEBUG)
       rloop.schedule(after: .init(Date(timeIntervalSinceNow: 0.001))) {
         self.inflightReadsLoop()
       }
@@ -622,6 +668,11 @@ extension SFTPFile: BlinkFiles.Writer {
       var written = wn
       var isFinished = false
       
+      self.log.message("Scheduled writes \(inflightWrites.count).", SSH_LOG_DEBUG)
+      
+      ssh_channel_set_blocking(self.channel, 1)
+      defer { ssh_channel_set_blocking(self.channel, 0) }
+      
       if inflightWrites.count > 0 {
         // Check scheduled writes
         do {
@@ -643,9 +694,6 @@ extension SFTPFile: BlinkFiles.Writer {
           pb.send(completion: .failure(error))
         }
       }
-      
-      ssh_channel_set_blocking(self.channel, 1)
-      defer { ssh_channel_set_blocking(self.channel, 0) }
       
       // Schedule more writes
       while inflightWrites.count < self.maxConcurrentOps && write.count > 0 {
@@ -670,6 +718,8 @@ extension SFTPFile: BlinkFiles.Writer {
         write = write.subdata(in: length..<write.count)
       }
       
+      self.log.message("New writes \(inflightWrites.count).", SSH_LOG_DEBUG)
+
       if writtenBytes > 0 {
         // Publish bytes written
         pb.send(writtenBytes)
@@ -690,10 +740,13 @@ extension SFTPFile: BlinkFiles.Writer {
   
   func checkWrites() throws -> Int {
     var lastIdx = 0
-    
+        
     for block in inflightWrites {
+      self.log.message("sftp_async_write_end sent", SSH_LOG_DEBUG)
       let rc = sftp_async_write_end(self.file, block, 0)
+      self.log.message("sftp_async_write_end \(rc)", SSH_LOG_DEBUG)
       if rc == SSH_AGAIN {
+        self.log.message("Write AGAIN", SSH_LOG_DEBUG)
         break
       } else if rc != SSH_OK {
         throw FileError(title: "Error while writing block", in: session)

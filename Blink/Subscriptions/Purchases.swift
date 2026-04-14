@@ -33,26 +33,27 @@ import Combine
 import Foundation
 import SystemConfiguration
 
-import Purchases
+import RevenueCat
 import BlinkConfig
 
 public class AppStoreEntitlementsSource: NSObject, EntitlementsSource, PurchasesDelegate {
   public weak var delegate: EntitlementsSourceDelegate?
   
-  public func purchases(_ purchases: Purchases, didReceiveUpdated purchaserInfo: Purchases.PurchaserInfo) {
+  public func purchases(_ purchases: Purchases, receivedUpdated purchaserInfo: CustomerInfo) {
     var dict = Dictionary<String, Entitlement>()
-    for (key, value) in purchaserInfo.entitlements.all {      
+    for (key, value) in purchaserInfo.entitlements.all {
       dict[key] = Entitlement(
         id: value.identifier,
         active: value.isActive,
-        unlockProductID: value.productIdentifier
+        unlockProductID: value.productIdentifier,
+        period: EntitlementPeriodType(from: value.periodType)
       )
     }
     delegate?.didUpdateEntitlements(
       source: self,
       entitlements: dict,
       activeSubscriptions: purchaserInfo.activeSubscriptions,
-      nonSubscriptionTransactions: Set(purchaserInfo.nonSubscriptionTransactions.map({$0.productId}))
+      nonSubscriptionTransactions: Set(purchaserInfo.nonSubscriptions.map({$0.productIdentifier}))
     )
   }
   
@@ -61,14 +62,28 @@ public class AppStoreEntitlementsSource: NSObject, EntitlementsSource, Purchases
   }
 }
 
+fileprivate extension EntitlementPeriodType {
+  init(from period: RevenueCat.PeriodType) {
+    switch period {
+    case .normal:
+      self = Self.Normal
+    case .intro:
+      self = Self.Intro
+    case .trial:
+      self = Self.Trial
+    case .prepaid:
+      self = Self.None
+    }
+  }
+}
 
 func configureRevCat() {
   Purchases.logLevel = .debug
-  Purchases.configure(
-    withAPIKey: XCConfig.infoPlistRevCatPubliKey(),
-    appUserID: nil,
-    observerMode: false,
-    userDefaults: UserDefaults.suite
-  )
-  print("RevCat UserID is \(Purchases.shared.appUserID)")
+  let cfg = Configuration
+    .builder(withAPIKey: XCConfig.infoPlistRevCatPubliKey())
+    .with(appUserID: nil)
+    .with(userDefaults: UserDefaults.suite)
+    .build()
+
+  Purchases.configure(with: cfg)
 }

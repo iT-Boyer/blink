@@ -2,6 +2,13 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>mosh1</key>
+	<array>
+		<string>MAIN</string>
+		<string>blink_mosh_main</string>
+		<string></string>
+		<string>no</string>
+	</array>
 	<key>skstore</key>
 	<array>
 		<string>MAIN</string>
@@ -72,10 +79,24 @@
 		<string></string>
 		<string>no</string>
 	</array>
+	<key>device-info</key>
+	<array>
+		<string>MAIN</string>
+		<string>device_info_main</string>
+		<string></string>
+		<string>no</string>
+	</array>
 	<key>config</key>
 	<array>
 		<string>MAIN</string>
 		<string>config_main</string>
+		<string></string>
+		<string>no</string>
+	</array>
+	<key>whatsnew</key>
+	<array>
+		<string>MAIN</string>
+		<string>whatsnew_main</string>
 		<string></string>
 		<string>no</string>
 	</array>
@@ -120,13 +141,6 @@
 		<string>open_main</string>
 		<string></string>
 		<string>file</string>
-	</array>
-	<key>link-files</key>
-	<array>
-		<string>MAIN</string>
-		<string>link_files_main</string>
-		<string></string>
-		<string>no</string>
 	</array>
 	<key>udptunnel</key>
 	<array>

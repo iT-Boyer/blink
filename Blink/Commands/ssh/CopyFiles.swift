@@ -37,8 +37,7 @@ import Foundation
 import ArgumentParser
 import BlinkFiles
 import SSH
-import NonStdIO
-
+import ios_system
 
 fileprivate let Version = "1.0.1"
 
@@ -57,6 +56,7 @@ public func copyfiles_main(argc: Int32, argv: Argv) -> Int32 {
 
 struct BlinkCopyCommand: ParsableCommand {
   static var configuration = CommandConfiguration(
+    commandName: "fcp",
     // Optional abstracts and discussions are used for help output.
     abstract: "Copy SOURCE to DEST or multiple SOURCEs to a DEST directory.",
     discussion: """
@@ -75,14 +75,26 @@ struct BlinkCopyCommand: ParsableCommand {
         help: "Copy only when source is newer than destination, considering the timestamp. This includes -p.")
   var update: Bool = false
 
-  @Argument(help: "SOURCE(s)",
-            transform: { try FileLocationPath($0) })
-  var source: FileLocationPath
+  @Argument(help: "SOURCE(s) ... DEST",
+            transform: {
+    try FileLocationPath($0)
+  })
+  private var locations: [FileLocationPath]
+  var source: [FileLocationPath] {
+    if locations.count > 1 {
+      return locations.dropLast()
+    } else {
+      return locations
+    }
+  }
+  var destination: FileLocationPath {
+    if locations.count <= 1 {
+      return try! FileLocationPath(".")
+    } else {
+      return locations.last!
+    }
+  }
 
-  @Argument(help: "DEST",
-            transform: { try FileLocationPath($0) })
-  var destination: FileLocationPath = try! FileLocationPath(".")
-  
   var preserveFlags: CopyAttributesFlag {
     preserve ? CopyAttributesFlag([.permissions, .timestamp]) : CopyAttributesFlag([])
   }
@@ -101,35 +113,66 @@ class FileLocationPath {
   var hostPath: String? // user@host#port
   var filePath: String
 
+  // The FilePath cannot perform a full canonicalization and standardization of remote paths,
+  // so what we do is to make them all look the same and let the Translator deal with standardizing and
+  // canonicalizing further.
+  // The FileLocationPath is always full, although it may contain special characters like ~.
+  // Because of this, the FilePath must always start with a /
   init(_ path: String) throws {
     self.fullPath = path
 
     let components = self.fullPath.components(separatedBy: ":")
-    
+
     switch components.count {
     case 1:
-      self.filePath = ((FileManager.default.currentDirectoryPath as NSString)
-        .appendingPathComponent(components[0]) as NSString)
-        .standardizingPath
-        
+      // For a local path, we already have either absolute or relative to current
+      let filePath = components[0]
+      if filePath.starts(with: "/") {
+        self.filePath = filePath
+      } else if filePath.starts(with: "~") {
+        self.filePath = ("/" as NSString).appendingPathComponent(filePath)
+      } else {
+        self.filePath = (FileManager.default.currentDirectoryPath as NSString)
+          .appendingPathComponent(filePath)
+      }
+
       self.proto = .local
     case 2:
-      self.filePath = components[1]
+      // For remote paths, we start with absolute / or relative to ~
+      let filePath = components[1]
+      if filePath.isEmpty {
+        self.filePath = "/~"
+      } else if filePath.starts(with: "/") {
+        self.filePath = filePath
+      } else if filePath.starts(with: "~") {
+        self.filePath = "/\(filePath)"
+      } else { // Relative
+        self.filePath = "/~/\(filePath)"
+      }
+
       var host = components[0]
       if host.starts(with: "/") {
         host.removeFirst()
       }
       self.hostPath = host
-    case 3:
-      self.filePath = components[2]
+    default:
+      let filePath = components[2...].joined(separator: ":")
+      if filePath.isEmpty {
+        self.filePath = "/~"
+      } else if filePath.starts(with: "/") {
+        self.filePath = filePath
+      } else if filePath.starts(with: "~") {
+        self.filePath = "/\(filePath)"
+      } else { // Relative
+        self.filePath = "/~/\(filePath)"
+      }
+
       self.hostPath = components[1]
       var proto = components[0]
       if proto.starts(with: "/") {
         proto.removeFirst()
       }
       self.proto = BlinkFilesProtocols(rawValue: proto)
-    default:
-      throw ArgumentParser.ValidationError("Path format can only have three components <protocol>:<host>:<path>")
     }
   }
 }
@@ -137,6 +180,7 @@ class FileLocationPath {
 
 public class BlinkCopy: NSObject {
   var copyCancellable: AnyCancellable?
+  
   let device: TermDevice = tty()
   let currentRunLoop = RunLoop.current
   var stdout = OutputStream(file: thread_stdout)
@@ -168,61 +212,57 @@ public class BlinkCopy: NSObject {
 
     let copyArguments = CopyArguments(preserve: command.preserveFlags,
                                       checkTimes: command.update)
-    
+
     // Connect to the destination first, as it will be the one driving the operation.
     let destProtocol = command.destination.proto ?? defaultRemoteProtocol
 
-    let destTranslator = (destProtocol == .local) ? localTranslator(to: command.destination.filePath) :
+    var destTranslator: AnyPublisher<Translator, Error>? = (destProtocol == .local) ? localTranslator(to: command.destination.filePath) :
       remoteTranslator(toFilePath: command.destination.filePath, atHost: command.destination.hostPath!, using: destProtocol, isSource: false)
-    
-    // Source
-    let sourceProtocol = command.source.proto ?? defaultRemoteProtocol
-    let sourceTranslator = (sourceProtocol == .local) ? localTranslator(to: command.source.filePath) :
-      remoteTranslator(toFilePath: command.source.filePath, atHost: command.source.hostPath!, using: sourceProtocol)
 
-    // TODO Output object for reports
+    // Source
+    var sourceTranslators: AnyPublisher<Translator, Error>? = command.source.publisher.flatMap { source in
+      let sourceProtocol = source.proto ?? defaultRemoteProtocol
+      let rootTranslator = (sourceProtocol == .local) ? self.localTranslator(to: source.filePath) :
+        self.remoteTranslator(toFilePath: source.filePath, atHost: source.hostPath!, using: sourceProtocol)
+      
+      return rootTranslator.flatMap { t in
+        t.translatorsMatching(path: source.filePath)
+          .collect()
+          .tryMap { ts in
+            guard !ts.isEmpty else {
+              throw CommandError(message: "No files found matching '\(source.fullPath)'")
+            }
+            return ts
+          }
+          .flatMap { $0.publisher }
+          .eraseToAnyPublisher()
+      }
+    }.eraseToAnyPublisher()
+
     var rc: Int32 = 0
     var rootFilePath: String!
     var currentFile = ""
     var displayFileName = ""
     var currentCopied: UInt64 = 0
     var currentSpeed: String?
-    var sourceBasePath: String?
     var startTimestamp = 0
     var lastElapsed = 0
-    copyCancellable = destTranslator.flatMap { d -> CopyProgressInfoPublisher in
+    copyCancellable = destTranslator!.flatMap { d -> CopyProgressInfoPublisher in
       rootFilePath = d.current
       
-      return sourceTranslator
-        .flatMap {
-          $0.cloneWalkTo(self.command.source.filePath)
-        }
-        .flatMap {
-          $0.translatorsMatching(path: self.command.source.filePath)
-        }
-        .reduce([] as [Translator]) { (all, t) in
-          var new = all
-          new.append(t)
-          return new
-        }
-        .tryMap { source -> [Translator] in
-          if source.count == 0 {
-            throw CommandError(message: "Source not found")
-          }
-          return source
-        }
-        .flatMap { source -> AnyPublisher<([Translator], Translator), Error> in
+      return sourceTranslators!
+        .flatMap(maxPublishers: .max(1)) { source -> AnyPublisher<(Translator, Translator), Error> in
           // Walk on destination, and it may have to be a directory or a file.
           return d.cloneWalkTo(self.command.destination.filePath)
             .tryCatch { error -> AnyPublisher<Translator, Error> in
               // If we are copying a single item, then we can create a file for it.
-              guard source.count == 1 else {
+              guard self.command.source.count == 1 else {
                 throw error
               }
               let newFileName = (self.command.destination.filePath as NSString).lastPathComponent
               let parentPath = (self.command.destination.filePath as NSString).deletingLastPathComponent
               return d.cloneWalkTo(parentPath)
-                .flatMap { $0.create(name: newFileName, flags: O_WRONLY, mode: S_IRWXU) }
+                .flatMap { $0.create(name: newFileName, mode: S_IRWXU) }
                 .flatMap { $0.close() }
                 .flatMap { _ in d.cloneWalkTo(self.command.destination.filePath) }
                 .eraseToAnyPublisher()
@@ -231,14 +271,15 @@ public class BlinkCopy: NSObject {
             .eraseToAnyPublisher()
         }
         .flatMap {
-          $1.copy(from: $0, args: copyArguments)
+          $1.copy(from: [$0], args: copyArguments)
         }.eraseToAnyPublisher()
     }.sink(receiveCompletion: { completion in
       if case let .failure(error) = completion {
         print("Copy failed. \(error)", to: &self.stderr)
         rc = -1
       }
-      awake(runLoop: self.currentRunLoop)
+      
+      self.stop()
     }, receiveValue: { progress in //(file, size, written) in
       // ProgressReport object, which we can use here or at the Dashboard.
       if currentFile != progress.name {
@@ -264,12 +305,12 @@ public class BlinkCopy: NSObject {
           currentSpeed = String(format: "%.2f", kbCopied / Double(elapsed))
         }
       }
-      
+
       let progressOutput = [
         "\u{001B}[K\(displayFileName)",
         "\(currentCopied)/\(progress.size)",
         "\(currentSpeed ?? "-")kb/S"].joined(separator: "\t")
-      
+
       if progress.written == 0 {
         print(progressOutput, to: &self.stdout)
       } else {
@@ -277,11 +318,14 @@ public class BlinkCopy: NSObject {
       }
     })
 
-    awaitRunLoop(currentRunLoop)
+    // Run everything in its own loop...
+    CFRunLoopRunInMode(.defaultMode, TimeInterval(INT_MAX), false)
 
-    // Make another run on the loop to close extra stuff in blocks.
+    // ...and because of that, make another run after cleanup to let hanging self-loops close.
+    copyCancellable = nil
+    sourceTranslators = nil
+    destTranslator = nil
     RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.5))
-    
     return rc
   }
 
@@ -294,8 +338,9 @@ public class BlinkCopy: NSObject {
     let sshCommand: SSHCommand
     var params = [hostPath]
     let host: BKSSHHost
+    let hostNameResolved: String
     let config: SSHClientConfig
-    
+
     do {
       // Pass verbosity
       if command.verbose > 0 {
@@ -303,26 +348,31 @@ public class BlinkCopy: NSObject {
         params.append(v)
       }
       sshCommand = try SSHCommand.parse(params)
-      host = try BKConfig().bkSSHHost(sshCommand.hostAlias, extending: sshCommand.bkSSHHost())
+      let resolved = try sshCommand.resolveHost()
+      host = resolved.host
+      hostNameResolved = resolved.hostName
       config = try SSHClientConfigProvider.config(host: host, using: device)
     } catch {
       let message = SSHCommand.message(for: error)
       return .fail(error: CommandError(message: message))
     }
 
-    return SSHClient.dial(host.hostName ?? sshCommand.hostAlias, with: config)
-    //return SSHPool.dial(hostName, with: config, connectionOptions: sshOptions)
+    return SSHClient.dial(hostNameResolved, with: config, withProxy: BlinkSSH.executeProxyCommand)
       .flatMap { $0.requestSFTP() }
       .tryMap  { try SFTPTranslator(on: $0) }
       .eraseToAnyPublisher()
   }
 
   @objc func sigwinch() { }
-  
+
   // Make signals objc funcs so we can duck type them.
   @objc func kill() {
-    copyCancellable?.cancel()
+    print("\r\nOperation cancelled", to: &self.stderr)
+    copyCancellable = nil
+    stop()
+  }
 
-    awake(runLoop: currentRunLoop)
+  func stop() {
+    CFRunLoopStop(self.currentRunLoop.getCFRunLoop())
   }
 }

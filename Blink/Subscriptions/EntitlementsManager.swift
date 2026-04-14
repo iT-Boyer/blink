@@ -34,23 +34,33 @@ import Foundation
 import UIKit
 
 let UnlimitedScreenTimeEntitlementID = "unlimited_screen_time"
+let EarlyAccessFeaturesEntitlementID = "early_access_features"
+let BuildEntitlementID = "build"
+
+let ProductBlinkPlusID = "blink_plus_1y_2999"
 let ProductBlinkShellPlusID = "blink_shell_plus_1y_1999"
 let ProductBlinkShellClassicID = "blink_shell_classic_unlimited_0"
-
+let ProductBlinkBuildBasicID = "blink_build_basic_1m_799"
+let ProductBlinkPlusBuildBasicID = "blink_plus_build_1m_999"
 
 // Decoupled from RevCat Entitlement
 public struct Entitlement: Identifiable, Equatable, Hashable {
   public let id: String
   public var active: Bool
   public var unlockProductID: String?
-  
-  public static var inactiveUnlimitedScreenTime = Self(id: UnlimitedScreenTimeEntitlementID, active: false, unlockProductID: nil)
+  public var period: EntitlementPeriodType
+
+  public static var inactiveUnlimitedScreenTime = Self(id: UnlimitedScreenTimeEntitlementID, active: false, unlockProductID: nil, period: .None)
+
+  public static var earlyAccessFeatures = Self(id: EarlyAccessFeaturesEntitlementID, active: false, unlockProductID: nil, period: .None)
+
+  public static var build = Self(id: BuildEntitlementID, active: false, unlockProductID: nil, period: .None)
 }
 
 public protocol EntitlementsSourceDelegate: AnyObject {
   func didUpdateEntitlements(
     source: EntitlementsSource,
-    entitlements :Dictionary<String, Entitlement>,
+    entitlements: Dictionary<String, Entitlement>,
     activeSubscriptions: Set<String>,
     nonSubscriptionTransactions: Set<String>
   )
@@ -61,16 +71,17 @@ public protocol EntitlementsSource: AnyObject {
   func startUpdates()
 }
 
-
 public class EntitlementsManager: ObservableObject, EntitlementsSourceDelegate {
   
   public static let shared = EntitlementsManager([AppStoreEntitlementsSource()])
   
   @Published var unlimitedTimeAccess: Entitlement = .inactiveUnlimitedScreenTime
+  @Published var earlyAccessFeatures: Entitlement = .earlyAccessFeatures
+  @Published var build: Entitlement = .build
+  
   @Published var activeSubscriptions: Set<String> = .init()
   @Published var nonSubscriptionTransactions: Set<String> = .init()
-  @Published var isUnknownState: Bool = true
-
+  
   private let _sources: [EntitlementsSource]
   
   private init(_ sources: [EntitlementsSource]) {
@@ -92,11 +103,6 @@ public class EntitlementsManager: ObservableObject, EntitlementsSourceDelegate {
     activeSubscriptions: Set<String>,
     nonSubscriptionTransactions: Set<String>
   ) {
-    
-    defer {
-      self.isUnknownState = false
-    }
-
     // TODO: merge stategy from multiple sources
     self.activeSubscriptions = activeSubscriptions
     self.nonSubscriptionTransactions = nonSubscriptionTransactions
@@ -106,31 +112,35 @@ public class EntitlementsManager: ObservableObject, EntitlementsSourceDelegate {
       self.unlimitedTimeAccess = newValue
     }
     
-    if isUnknownState {
-      _updateSubscriptionNag()
-    } else {
-      if oldValue.active != self.unlimitedTimeAccess.active {
-        _updateSubscriptionNag()
-      }
+    if let newValue = entitlements[EarlyAccessFeaturesEntitlementID] {
+      self.earlyAccessFeatures = newValue
     }
-
-  }
-  
-  private func _updateSubscriptionNag() {
-    if ProcessInfo().isMacCatalystApp || FeatureFlags.noSubscriptionNag {
-      SubscriptionNag.shared.terminate()
-      return
-    }
-    if self.unlimitedTimeAccess.active {
-      SubscriptionNag.shared.terminate()
-    } else {
-      SubscriptionNag.shared.start()
+    
+    if let newValue = entitlements[BuildEntitlementID] {
+      self.build = newValue
     }
   }
   
   public func currentPlanName() -> String {
+    if FeatureFlags.earlyAccessFeatures {
+      return "TestFlight Plan"
+    }
     if activeSubscriptions.contains(ProductBlinkShellPlusID) {
-      return "Blink+ Plan"
+      if self.earlyAccessFeatures.period == .Trial {
+        return "Blink+ Trial"
+      } else {
+        return "Blink+ Plan"
+      }
+    }
+    if activeSubscriptions.contains(ProductBlinkPlusID) {
+      if self.earlyAccessFeatures.period == .Trial {
+        return "Blink+ Trial"
+      } else {
+        return "Blink+ Plan"
+      }
+    }
+    if activeSubscriptions.contains(ProductBlinkPlusBuildBasicID) {
+      return "Blink+Build Plan"
     }
     if nonSubscriptionTransactions.contains(ProductBlinkShellClassicID) {
       return "Blink Classic Plan"
@@ -138,4 +148,48 @@ public class EntitlementsManager: ObservableObject, EntitlementsSourceDelegate {
     return "Free Plan"
   }
   
+  public func customerTier() -> CustomerTier {
+    if activeSubscriptions.contains(ProductBlinkShellPlusID)  || activeSubscriptions.contains(ProductBlinkPlusID)
+        || activeSubscriptions.contains(ProductBlinkPlusBuildBasicID)
+    {
+      return CustomerTier.Plus
+    }
+    if nonSubscriptionTransactions.contains(ProductBlinkShellClassicID) {
+      return CustomerTier.Classic
+    }
+    if PublishingOptions.current == .testFlight || PublishingOptions.current == .developer {
+      return CustomerTier.TestFlight
+    }
+
+    return CustomerTier.Free
+  }
+
+  public func hasActiveSubscriptions() -> Bool {
+    print(currentPlanName())
+    return customerTier() != CustomerTier.Free
+  }
+  
+  public func groupsCheckViolation() -> Bool {
+    if activeSubscriptions.contains(ProductBlinkPlusBuildBasicID) &&
+        (activeSubscriptions.contains(ProductBlinkPlusID) ||
+         activeSubscriptions.contains(ProductBlinkShellPlusID)) {
+      return true
+    }
+    
+    return false
+  }
+}
+
+public enum CustomerTier {
+  case Free
+  case Plus
+  case Classic
+  case TestFlight
+}
+
+public enum EntitlementPeriodType {
+  case Trial
+  case Intro
+  case Normal
+  case None
 }

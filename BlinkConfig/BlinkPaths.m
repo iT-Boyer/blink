@@ -43,8 +43,13 @@ NSString *__iCloudsDriveDocumentsPath = nil;
   if (__homePath == nil) {
     __homePath = [[self groupContainerPath] stringByAppendingPathComponent:@"home"];
   }
-  
+
   return __homePath;
+}
+
++ (NSURL *)homeURL
+{
+  return [NSURL fileURLWithPath:[self homePath]];
 }
 
 + (NSString *)documentsPath
@@ -63,7 +68,7 @@ NSString *__iCloudsDriveDocumentsPath = nil;
   if (__groupContainerPath == nil) {
 
     NSString *groupID = [XCConfig infoPlistFullGroupID];
-    
+
     NSFileManager *fm = [NSFileManager defaultManager];
     NSString *path = [fm containerURLForSecurityApplicationGroupIdentifier:groupID].path;
     __groupContainerPath = path;
@@ -80,7 +85,7 @@ NSString *__iCloudsDriveDocumentsPath = nil;
     [self _ensureFolderAtPath:path];
     __iCloudsDriveDocumentsPath = path;
   }
-  
+
   return __iCloudsDriveDocumentsPath;
 }
 
@@ -95,15 +100,26 @@ NSString *__iCloudsDriveDocumentsPath = nil;
     destinationPath:[self documentsPath]];
 }
 
-+ (void)_linkAtPath:(NSString *)atPath destinationPath:(NSString *)destinationPath {
++ (void)_linkAtPath:(NSString *)path destinationPath:(NSString *)destinationPath {
   NSFileManager *fm = [NSFileManager defaultManager];
-  if ([fm fileExistsAtPath:atPath]) {
-    return;
+  
+  // Don't use fileExists as that would traverse the symlink.
+  if ([fm attributesOfItemAtPath:path error:nil]) {
+    NSString *currentDestinationPath = [fm destinationOfSymbolicLinkAtPath:path error:nil];
+    if (!currentDestinationPath) {
+      return;
+    }
+
+    // We lost access. Remove that symlink.
+    if (![fm isReadableFileAtPath: currentDestinationPath]) {
+      [fm removeItemAtPath: path error: nil];
+    } else {
+      return;
+    }
   }
-  
   NSError *error = nil;
-  
-  BOOL ok = [fm createSymbolicLinkAtPath:atPath
+
+  BOOL ok = [fm createSymbolicLinkAtPath:path
                      withDestinationPath:destinationPath
                                    error:&error];
 
@@ -118,10 +134,23 @@ NSString *__iCloudsDriveDocumentsPath = nil;
   return dotBlink;
 }
 
++ (NSString *)blinkBuild {
+  NSString *dotBlinkBuild = [[self homePath] stringByAppendingPathComponent:@".blink-build"];
+  [self _ensureFolderAtPath:dotBlinkBuild];
+  return dotBlinkBuild;
+}
+
+
 + (NSString *)ssh {
   NSString *dotSSH = [[self homePath] stringByAppendingPathComponent:@".ssh"];
   [self _ensureFolderAtPath:dotSSH];
   return dotSSH;
+}
+
++ (NSString *)blinkAgentSettings {
+  NSString *path = [[self blink] stringByAppendingPathComponent:@"agents"];
+  [self _ensureFolderAtPath:path];
+  return path;
 }
 
 + (void)_ensureFolderAtPath:(NSString *)path {
@@ -131,7 +160,7 @@ NSString *__iCloudsDriveDocumentsPath = nil;
     if (isDir) {
       return;
     }
-    
+
     [fm removeItemAtPath:path error:nil];
   }
   [fm createDirectoryAtPath:path withIntermediateDirectories:YES attributes:@{} error:nil];
@@ -141,6 +170,28 @@ NSString *__iCloudsDriveDocumentsPath = nil;
 + (NSURL *)blinkURL
 {
   return [NSURL fileURLWithPath:[self blink]];
+}
+
++ (NSURL *)blinkBuildURL
+{
+  return [NSURL fileURLWithPath:[self blinkBuild]];
+}
+
++ (NSURL *)blinkBuildTokenURL
+{
+  NSString *url = [self blinkBuild];
+  return [NSURL fileURLWithPath:[url stringByAppendingPathComponent:@".build.token"]];
+}
+
++ (NSURL *)blinkBuildStagingMarkURL
+{
+  NSString *url = [self blinkBuild];
+  return [NSURL fileURLWithPath:[url stringByAppendingPathComponent:@".staging"]];
+}
+
++ (NSURL *)blinkAgentSettingsURL
+{
+  return [NSURL fileURLWithPath:[self blinkAgentSettings]];
 }
 
 + (NSURL *)sshURL
@@ -194,6 +245,25 @@ NSString *__iCloudsDriveDocumentsPath = nil;
   return [NSURL fileURLWithPath:[self historyFile]];
 }
 
++ (NSURL *)localSnippetsLocationURL
+{
+  return [NSURL fileURLWithPath:[[self documentsPath] stringByAppendingPathComponent:@"snips"]];
+}
+
++ (NSURL *)iCloudSnippetsLocationURL {
+  NSString *path = [self iCloudDriveDocuments];
+  if (path) {
+    return [NSURL fileURLWithPath:[path stringByAppendingPathComponent:@"snips"]];
+  }
+  return nil;
+}
+
++ (NSURL *)fileProviderReplicatedURL {
+  NSString *fileProviderPath = [[self groupContainerPath] stringByAppendingPathComponent:@"FileProviderReplicated"];
+  [self _ensureFolderAtPath:fileProviderPath];
+  return [NSURL fileURLWithPath:fileProviderPath];
+}
+
 + (NSString *)knownHostsFile
 {
   return [[self ssh] stringByAppendingPathComponent:@"known_hosts"];
@@ -212,38 +282,6 @@ NSString *__iCloudsDriveDocumentsPath = nil;
 + (NSURL *)blinkCodeErrorLogURL
 {
   return [[self blinkURL] URLByAppendingPathComponent:@"blinkCode.log"];
-}
-
-+ (NSArray<NSString *> *)cleanedSymlinksInHomeDirectory
-{
-  NSFileManager *fm = [NSFileManager defaultManager];
-  NSMutableArray<NSString *> *allowedPaths = [[NSMutableArray alloc] init];
-  
-  NSString *homePath = [BlinkPaths homePath];
-  NSArray<NSString *> * files = [fm contentsOfDirectoryAtPath:homePath error:nil];
-  
-  for (NSString *path in files) {
-    NSString *filePath = [homePath stringByAppendingPathComponent:path];
-    NSDictionary * attrs = [fm attributesOfItemAtPath:filePath error:nil];
-    if (attrs[NSFileType] != NSFileTypeSymbolicLink) {
-      continue;
-    }
-      
-    NSString *destPath = [fm destinationOfSymbolicLinkAtPath:filePath error:nil];
-    if (!destPath) {
-      continue;
-    }
-    
-    if (![fm isReadableFileAtPath:destPath]) {
-      
-      // We lost access. Remove that symlink
-      [fm removeItemAtPath:filePath error:nil];
-      continue;
-    }
-    
-    [allowedPaths addObject:destPath];
-  }
-  return allowedPaths;
 }
 
 @end

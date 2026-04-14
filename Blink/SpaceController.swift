@@ -28,11 +28,17 @@
 // <http://www.github.com/blinksh/blink>.
 //
 ////////////////////////////////////////////////////////////////////////////////
+@objc protocol CommandsHUDViewDelegate: NSObjectProtocol {
+  func currentTerm() -> TermController?
+  func spaceController() -> SpaceController?
+}
 
 
 import MBProgressHUD
 import SwiftUI
 
+
+// MARK: UIViewController
 class SpaceController: UIViewController {
   
   struct UIState: UserActivityCodable {
@@ -54,12 +60,66 @@ class SpaceController: UIViewController {
   private var _currentKey: UUID? = nil
   
   private var _hud: MBProgressHUD? = nil
-  private let _commandsHUD = CommandsHUGView(frame: .zero)
   
   private var _overlay = UIView()
   private var _spaceControllerAnimating: Bool = false
-  private weak var _termViewToFocus: TermView? = nil
   var stuckKeyCode: KeyCode? = nil
+  
+  private var _snippetsVC: SnippetsViewController? = nil
+  private var _blinkMenu: BlinkMenu? = nil
+  private var _bottomTapAreaView = UIView()
+
+  // Snips Input Mode tracking
+  private var _isSnipsInputModeActive: Bool = false {
+    didSet {
+      guard _isSnipsInputModeActive != oldValue else { return }
+      _configureCapabilitiesForSnipsInputMode(_isSnipsInputModeActive)
+    }
+  }
+
+  var isSnipsInputModeActive: Bool {
+    _isSnipsInputModeActive
+  }
+
+  // Capability flags - independent state that controls what's allowed
+  private var canTerminalBecomeFirstResponder: Bool = true {
+    didSet {
+      guard canTerminalBecomeFirstResponder != oldValue else { return }
+      currentTerm()?.shouldBlockFirstResponder = !canTerminalBecomeFirstResponder
+    }
+  }
+
+  private var canDisplayHUD: Bool = true {
+    didSet {
+      guard canDisplayHUD != oldValue else { return }
+      if !canDisplayHUD {
+        _hud?.hide(animated: false)
+      }
+    }
+  }
+
+  private var canSwitchPages: Bool = true {
+    didSet {
+      guard canSwitchPages != oldValue else { return }
+      _setPageViewControllerScrollEnabled(canSwitchPages)
+    }
+  }
+
+  // Configure capabilities based on input mode
+  private func _configureCapabilitiesForSnipsInputMode(_ active: Bool) {
+    canTerminalBecomeFirstResponder = !active
+    canDisplayHUD = !active
+    canSwitchPages = !active
+  }
+
+  private func _setPageViewControllerScrollEnabled(_ enabled: Bool) {
+    // Find and enable/disable scroll gesture recognizers
+    for view in _viewportsController.view.subviews {
+      if let scrollView = view as? UIScrollView {
+        scrollView.isScrollEnabled = enabled
+      }
+    }
+  }
   
   var safeFrame: CGRect {
     _overlay.frame
@@ -73,17 +133,23 @@ class SpaceController: UIViewController {
       return
     }
     
-    if window.screen === UIScreen.main {
-      var insets = UIEdgeInsets.zero
-      insets.bottom = LayoutManager.mainWindowKBBottomInset()
-      _overlay.frame = view.bounds.inset(by: insets)
-    } else {
-      _overlay.frame = view.bounds
+    _snippetsVC?.view.frame = _overlay.frame
+    
+    if let menu = _blinkMenu {
+      let size = _overlay.frame.size;
+      let menuSize = menu.layout(for: size)
+      
+      menu.frame = CGRect(
+        x: size.width * 0.5 - menuSize.width * 0.5,
+        y: _overlay.frame.size.height - menuSize.height - 20,
+        width: menuSize.width,
+        height: menuSize.height
+      )
+      self.view.bringSubviewToFront(menu)
     }
-    
-    _commandsHUD.setNeedsLayout()
-    
+        
     FaceCamManager.update(in: self)
+    PipFaceCamManager.update(in: self)
    
     DispatchQueue.main.async {
       self.forEachActive { t in
@@ -92,6 +158,12 @@ class SpaceController: UIViewController {
         }
       }
     }
+    let windowBounds = window.bounds
+    let height: CGFloat = 22
+    _bottomTapAreaView.frame = CGRect(x: windowBounds.width * 0.5 - 250, y: windowBounds.height - height, width: 250 * 2, height: height)
+//    _bottomTapAreaView.backgroundColor = UIColor.red
+    self.view.bringSubviewToFront(_bottomTapAreaView);
+    
   }
   
   private func forEachActive(block:(TermController) -> ()) {
@@ -127,20 +199,27 @@ class SpaceController: UIViewController {
     #endif
   }
   
-  @objc func _relayout() {
-    guard
-      let window = view.window,
-      window.screen === UIScreen.main
-    else {
-      return
-    }
+  private func setupOverlayConstraints() {
+    // Overlay positioning to wrap safe areas and keyboard.
+    let keyboardGuide = view.keyboardLayoutGuide
     
-    view.setNeedsLayout()
+    _overlay.translatesAutoresizingMaskIntoConstraints = false
+
+    NSLayoutConstraint.activate([
+      _overlay.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+      _overlay.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
+      _overlay.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
+      _overlay.bottomAnchor.constraint(equalTo: keyboardGuide.topAnchor)
+    ])
   }
   
+  deinit {
+    NotificationCenter.default.removeObserver(self)
+  }
+
   @objc private func _setupAppearance() {
     self.view.tintColor = .cyan
-    switch BKDefaults.keyboardStyle() {
+    switch BLKDefaults.keyboardStyle() {
     case .light:
       overrideUserInterfaceStyle = .light
     case .dark:
@@ -176,47 +255,53 @@ class SpaceController: UIViewController {
     _overlay.isUserInteractionEnabled = false
     view.addSubview(_overlay)
     
-    _commandsHUD.delegate = self
     _registerForNotifications()
     
+    setupOverlayConstraints()
+    
     if _viewportsKeys.isEmpty {
-      _createShell(userActivity: nil, animated: false)
+      _newShellAction(animated: false)
     } else if let key = _currentKey {
       let term: TermController = SessionRegistry.shared[key]
       term.delegate = self
+      // term.layoutProvider = self
       term.bgColor = view.backgroundColor ?? .black
       _viewportsController.setViewControllers([term], direction: .forward, animated: false)
     }
+        
+    self.view.addSubview(_bottomTapAreaView)
+    
+    let doubleTap = UITapGestureRecognizer(target: self, action: #selector(toggleQuickActionsAction))
+    doubleTap.numberOfTapsRequired = 2
+    doubleTap.numberOfTouchesRequired = 1
+    _bottomTapAreaView.addGestureRecognizer(doubleTap)
+    
+    NotificationCenter.default.addObserver(self, selector: #selector(_geoTrackStateChanged), name: NSNotification.Name.BLGeoTrackStateChange, object: nil)
     
 //    view.addSubview(_faceCam)
 //    addChild(_faceCam.controller)
+    DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { self.alertSubscriptionGroupViolation() }
   }
   
-
-  public override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
-    super.viewWillTransition(to: size, with: coordinator)
-    if view.window?.isKeyWindow == true {
-      DispatchQueue.main.async {
-//        KBTracker.shared.attach(input: KBTracker.shared.input)
-//        input?.sync(traits: kbTraits, device: kbDevice, hideSmartKeysWithHKB: hideSmartKeysWithHKB)
-//        self.currentTerm()?.termDevice.view?.webView?.kbView.reset()
-//        SmarterTermInput.shared.contentView()?.reloadInputViews()
-      }
+  func alertSubscriptionGroupViolation() {
+    // NOTE: Added just in case, as I have seen in RevCat some users ending up in both groups (bc
+    // things can still be selected outside the App).
+    let msg = """
+You may be in two different subscription groups and hence, you may end up overpaying for Blink.
+Please go to your subscriptions and cancel one of them!
+"""
+    
+    if EntitlementsManager.shared.groupsCheckViolation() {
+      let ctrl = UIAlertController(title: "Important!", message: msg, preferredStyle: .alert)
+      ctrl.addAction(UIAlertAction(title: "Ok", style: .default))
+      self.present(ctrl, animated: true)
     }
   }
   
-  
-  
-  override var editingInteractionConfiguration: UIEditingInteractionConfiguration {
-// iOS 16 doesn't call this method anymore.
-//    DispatchQueue.main.async {
-//      self._attachHUD()
-//    }
-    return .default
-  }
-  
-  deinit {
-    NotificationCenter.default.removeObserver(self)
+  func showAlert(msg: String) {
+    let ctrl = UIAlertController(title: "Error", message: msg, preferredStyle: .alert)
+    ctrl.addAction(UIAlertAction(title: "Ok", style: .default))
+    self.present(ctrl, animated: true)
   }
   
   func _registerForNotifications() {
@@ -229,25 +314,16 @@ class SpaceController: UIViewController {
     
     nc.addObserver(self, selector:#selector(_didBecomeKeyWindow), name: UIApplication.didBecomeActiveNotification, object: nil)
     
-    nc.addObserver(self, selector: #selector(_relayout),
-                   name: NSNotification.Name(rawValue: LayoutManagerBottomInsetDidUpdate),
-                   object: nil)
-    
     nc.addObserver(self, selector: #selector(_setupAppearance),
                    name: NSNotification.Name(rawValue: BKAppearanceChanged),
                    object: nil)
-    
-    
-    nc.addObserver(self, selector: #selector(_termViewIsReady(n:)), name: NSNotification.Name(TermViewReadyNotificationKey), object: nil)
-    nc.addObserver(self, selector: #selector(_termViewBrowserIsReady(n:)), name: NSNotification.Name(TermViewBrowserReadyNotificationKey), object: nil)
-    
-    
     
     nc.addObserver(self, selector: #selector(_UISceneDidEnterBackgroundNotification(_:)),
                    name: UIScene.didEnterBackgroundNotification, object: nil)
     
     nc.addObserver(self, selector: #selector(_UISceneWillEnterForegroundNotification(_:)),
                    name: UIScene.willEnterForegroundNotification, object: nil)
+
   }
                    
   @objc func _UISceneDidEnterBackgroundNotification(_ n: Notification) {
@@ -281,7 +357,7 @@ class SpaceController: UIViewController {
     
     #endif
     
-    if scene.session.role == .windowExternalDisplay,
+    if scene.session.role == .windowExternalDisplayNonInteractive,
       let sharedWindow = ShadowWindow.shared,
        sharedWindow === view.window,
        let ctrl = sharedWindow.spaceController.currentTerm() {
@@ -309,16 +385,7 @@ class SpaceController: UIViewController {
     }
     #endif
   }
-  
-  private func _attachHUD() {
-    if
-      sceneRole == .windowApplication,
-      let win = view.window?.windowScene?.windows.last,
-      win !== view.window {
-      _commandsHUD.attachToWindow(inputWindow: win)
-    }
-  }
-  
+    
   @objc func _didBecomeKeyWindow() {
     guard
       presentedViewController == nil,
@@ -332,13 +399,15 @@ class SpaceController: UIViewController {
     _focusOnShell()
   }
   
-  func _createShell(
+  func _createTerminal(
     userActivity: NSUserActivity?,
     animated: Bool,
+    sessionPayload: TermSessionPayload,
     completion: ((Bool) -> Void)? = nil)
   {
-    let term = TermController(sceneRole: sceneRole)
+    let term = TermController(sceneRole: sceneRole, sessionPayload: sessionPayload)
     term.delegate = self
+    //term.layoutProvider = self
     term.userActivity = userActivity
     term.bgColor = view.backgroundColor ?? .black
     
@@ -376,7 +445,7 @@ class SpaceController: UIViewController {
     SessionRegistry.shared.remove(forKey: currentKey)
     _viewportsKeys.remove(at: idx)
     if _viewportsKeys.isEmpty {
-      _createShell(userActivity: nil, animated: true)
+      _newShellAction(animated: false)
       return
     }
 
@@ -408,58 +477,13 @@ class SpaceController: UIViewController {
     _attachInputToCurrentTerm()
   }
   
-  @objc private func _termViewIsReady(n: Notification) {
-    
-    guard let term = _termViewToFocus,
-          term == (n.object as? TermView)
-    else {
-      return
-    }
-    
-    _termViewToFocus = nil
-    _attachInputToCurrentTerm()
-  }
-  
-  @objc private func _termViewBrowserIsReady(n: Notification) {
-    _attachInputToCurrentTerm();
-  }
   
   private func _attachInputToCurrentTerm() {
-    guard
-      let device = currentDevice,
-      let deviceView = device.view
-    else {
+    // Check capability flag instead of mode directly
+    guard canTerminalBecomeFirstResponder else {
       return
     }
-    
-    _termViewToFocus = nil
-    
-    guard deviceView.isReady else {
-      _termViewToFocus = deviceView
-      return
-    }
-    
-    let input = KBTracker.shared.input
-    
-    if deviceView.browserView != nil {
-      KBTracker.shared.attach(input: deviceView.browserView)
-      device.attachInput(deviceView.browserView)
-      _ = deviceView.browserView.becomeFirstResponder()
-      if input != KBTracker.shared.input {
-        input?.reportFocus(false)
-      }
-      return
-    }
-
-    
-    KBTracker.shared.attach(input: deviceView.webView)
-    device.attachInput(deviceView.webView)
-    deviceView.webView.reportFocus(true)
-    device.focus()
-    _attachHUD()
-    if input != KBTracker.shared.input {
-      input?.reportFocus(false)
-    }
+    currentTerm()?.activateInput()
   }
   
   var currentDevice: TermDevice? {
@@ -468,12 +492,15 @@ class SpaceController: UIViewController {
   
   private func _displayHUD() {
     _hud?.hide(animated: false)
-    
+
+    // Check capability flag instead of mode directly
+    guard canDisplayHUD else {
+      return
+    }
+
     guard let term = currentTerm() else {
       return
     }
-    
-    let params = term.sessionParams
     
     if let bgColor = term.view.backgroundColor, bgColor != .clear {
       view.backgroundColor = bgColor
@@ -501,11 +528,11 @@ class SpaceController: UIViewController {
     
     var sceneTitle = "[\(pageNum == nil ? 1 : pageNum! + 1) of \(_viewportsKeys.count)] \(title ?? "blink")"
     
-    if params.rows == 0 && params.cols == 0 {
+    if term.termView.rows == 0 && term.termView.cols == 0 {
       hud.label.numberOfLines = 1
       hud.label.text = title ?? "blink"
     } else {
-      let geometry = "\(params.cols)×\(params.rows)"
+      let geometry = "\(term.termView.cols)×\(term.termView.rows)"
       hud.label.numberOfLines = 2
       hud.label.text = "\(title ?? "blink")\n\(geometry)"
       
@@ -516,11 +543,12 @@ class SpaceController: UIViewController {
     hud.hide(animated: true, afterDelay: 1)
     
     view.window?.windowScene?.title = sceneTitle
-    _commandsHUD.updateHUD()
+    self.view.setNeedsLayout()
   }
   
 }
 
+// MARK: UIStateRestorable
 extension SpaceController: UIStateRestorable {
   func restore(withState state: UIState) {
     _viewportsKeys = state.keys
@@ -551,6 +579,7 @@ extension SpaceController: UIStateRestorable {
   }
 }
 
+// MARK: UIPageViewControllerDelegate
 extension SpaceController: UIPageViewControllerDelegate {
   public func pageViewController(
     _ pageViewController: UIPageViewController,
@@ -560,17 +589,20 @@ extension SpaceController: UIPageViewControllerDelegate {
     guard completed else {
       return
     }
-    
+
     guard let termController = pageViewController.viewControllers?.first as? TermController
     else {
       return
     }
+    termController.resumeIfNeeded()
     _currentKey = termController.meta.key
     _displayHUD()
     _attachInputToCurrentTerm()
+
   }
 }
 
+// MARK: UIPageViewControllerDataSource
 extension SpaceController: UIPageViewControllerDataSource {
   private func _controller(controller: UIViewController, advancedBy: Int) -> UIViewController? {
     guard let ctrl = controller as? TermController else {
@@ -587,6 +619,7 @@ extension SpaceController: UIPageViewControllerDataSource {
     let newKey = _viewportsKeys[idx]
     let newCtrl: TermController = SessionRegistry.shared[newKey]
     newCtrl.delegate = self
+    //newCtrl.layoutProvider = self
     newCtrl.bgColor = view.backgroundColor ?? .black
     return newCtrl
   }
@@ -594,13 +627,14 @@ extension SpaceController: UIPageViewControllerDataSource {
   public func pageViewController(_ pageViewController: UIPageViewController, viewControllerBefore viewController: UIViewController) -> UIViewController? {
     _controller(controller: viewController, advancedBy: -1)
   }
-  
+
   public func pageViewController(_ pageViewController: UIPageViewController, viewControllerAfter viewController: UIViewController) -> UIViewController? {
     _controller(controller: viewController, advancedBy: 1)
   }
   
 }
 
+// MARK: TermControlDelegate
 extension SpaceController: TermControlDelegate {
   
   func terminalHangup(control: TermController) {
@@ -661,7 +695,7 @@ extension SpaceController {
     
 //    input.reportStateReset()
     switch cmd.bindingAction {
-    case .hex(let hex, comment: _):
+    case .hex(let hex, stringInput: _, comment: _):
       input.reportHex(hex)
     case .press(let keyCode, mods: let mods):
       input.reportPress(UIKeyModifierFlags(rawValue: mods), keyId: keyCode.id)
@@ -689,6 +723,10 @@ extension SpaceController {
 
     switch cmd {
     case .configShow: showConfigAction()
+    case .snippetsShow: showSnippetsAction()
+    case .scratchShow: showScratchAction()
+    case .toggleQuickActions: toggleQuickActionsAction()
+    case .toggleGeoTrack: toggleGeoTrack()
     case .tab1: _moveToShell(idx: 0)
     case .tab2: _moveToShell(idx: 1)
     case .tab3: _moveToShell(idx: 2)
@@ -704,7 +742,7 @@ extension SpaceController {
     case .tabClose: _closeCurrentSpace()
     case .tabMoveToOtherWindow: _moveToOtherWindowAction()
     case .toggleKeyCast: _toggleKeyCast()
-    case .tabNew: newShellAction()
+    case .tabNew: _newShellAction()
     case .tabNext: _advanceShell(by: 1)
     case .tabPrev: _advanceShell(by: -1)
     case .tabNextCycling: _advanceShellCycling(by: 1)
@@ -714,13 +752,16 @@ extension SpaceController {
     case .windowFocusOther: _focusOtherWindowAction()
     case .windowNew: _newWindowAction()
     case .clipboardCopy: KBTracker.shared.input?.copy(self)
+    case .clipboardCopyRaw: KBTracker.shared.input?.copyRaw(self)
     case .clipboardPaste: KBTracker.shared.input?.paste(self)
     case .selectionGoogle: KBTracker.shared.input?.googleSelection(self)
     case .selectionStackOverflow: KBTracker.shared.input?.soSelection(self)
     case .selectionShare: KBTracker.shared.input?.shareSelection(self)
-    case .zoomIn: currentTerm()?.termDevice.view?.increaseFontSize()
-    case .zoomOut: currentTerm()?.termDevice.view?.decreaseFontSize()
-    case .zoomReset: currentTerm()?.termDevice.view?.resetFontSize()
+    case .zoomIn: currentTerm()?.termView.increaseFontSize()
+    case .zoomOut: currentTerm()?.termView.decreaseFontSize()
+    case .zoomReset: currentTerm()?.termView.resetFontSize()
+    case .hideKeyboard: KBTracker.shared.input?.resignFirstResponder()
+
     }
   }
   
@@ -733,10 +774,19 @@ extension SpaceController {
     currentTerm()?.scaleWithPich(pinch)
   }
   
-  @objc func newShellAction() {
-    _createShell(userActivity: nil, animated: true)
+  private func _newShellAction(command: String = "", animated: Bool = true) {
+    let params = MCPParams()
+    if !command.isEmpty {
+      params.initialCommand = command
+    }
+    let payload = MCPSessionPayload(params: params)
+    _createTerminal(userActivity: nil, animated: animated, sessionPayload: payload)
   }
-  
+
+  @objc func newShellAction() {
+    _newShellAction()
+  }
+
   @objc func closeShellAction() {
     _closeCurrentSpace()
   }
@@ -750,8 +800,8 @@ extension SpaceController {
       let session = view.window?.windowScene?.session,
       let idx = sessions.firstIndex(of: session)?.advanced(by: 1)
     else  {
-      if currentTerm()?.termDevice.view?.isFocused() == true {
-        _ = currentTerm()?.termDevice.view?.webView?.resignFirstResponder()
+      if currentTerm()?.termView.isFocused() == true {
+        currentTerm()?.resignInput()
       } else {
         _focusOnShell()
       }
@@ -769,7 +819,7 @@ extension SpaceController {
       return
     }
           
-    sessions = sessions.filter { $0.role != .windowExternalDisplay }
+    sessions = sessions.filter { $0.role != .windowExternalDisplayNonInteractive }
     
     let nextSession: UISceneSession
     if idx < sessions.endIndex {
@@ -813,14 +863,15 @@ extension SpaceController {
       let window = self.view.window,
       shadowScene == window.windowScene,
       shadowWindow !== window {
-      
+
+      term.prepareForWindowMove()
       _removeCurrentSpace(attachInput: false)
       shadowWindow.makeKey()
       shadowWindow.spaceController._addTerm(term: term)
       return
     }
           
-    sessions = sessions.filter { $0.role != .windowExternalDisplay }
+    sessions = sessions.filter { $0.role != .windowExternalDisplayNonInteractive }
     
     let nextSession: UISceneSession
     if idx < sessions.endIndex {
@@ -838,16 +889,17 @@ extension SpaceController {
     else {
       return
     }
-    
 
+
+    term.prepareForWindowMove()
     _removeCurrentSpace(attachInput: false)
     nextSpaceCtrl._addTerm(term: term)
     nextWindow.makeKey()
   }
   
   func _toggleKeyCast() {
-    BKDefaults.setKeycasts(!BKDefaults.isKeyCastsOn())
-    BKDefaults.save()
+    BLKDefaults.setKeycasts(!BLKDefaults.isKeyCastsOn())
+    BLKDefaults.save()
   }
   
   func _activeSessions() -> [UISceneSession] {
@@ -857,11 +909,14 @@ extension SpaceController {
   }
   
   @objc func _newWindowAction() {
+    let options = UIWindowScene.ActivationRequestOptions()
+    options.requestingScene = self.view.window?.windowScene
+    
     UIApplication
       .shared
       .requestSceneSessionActivation(nil,
                                      userActivity: nil,
-                                     options: nil,
+                                     options: options,
                                      errorHandler: nil)
   }
   
@@ -894,13 +949,172 @@ extension SpaceController {
       
       return
     }
-    
+
     DispatchQueue.main.async {
+      self.currentTerm()?.resignInput()
       let navCtrl = UINavigationController()
       navCtrl.navigationBar.prefersLargeTitles = true
-      let s = SettingsHostingController.createSettings(nav: navCtrl)
+      let s = SettingsHostingController.createSettings(nav: navCtrl, onDismiss: {
+        [weak self] in self?.focusOnShellAction()
+      })
       navCtrl.setViewControllers([s], animated: false)
       self.present(navCtrl, animated: true, completion: nil)
+    }
+  }
+  
+//  @objc func showWalkthroughAction() {
+//    if self.view.window == ShadowWindow.shared {
+//      return
+//    }
+//    DispatchQueue.main.async {
+//      _ = KBTracker.shared.input?.resignFirstResponder()
+//      let ctrl = UIHostingController(rootView: WalkthroughView(urlHandler: blink_openurl,
+//                                                               dismissHandler: { self.dismiss(animated: true) })
+//      )
+//      ctrl.modalPresentationStyle = .formSheet
+//      self.present(ctrl, animated: false)
+//    }
+//  }
+  
+  @objc func showSnippetsAction() {
+    if let _ = _snippetsVC {
+      return
+    }
+    self.presentSnippetsController()
+    if let _ = self._interactiveSpaceController()._blinkMenu {
+      self.toggleQuickActionsAction()
+    }
+  }
+
+  @objc func showScratchAction() {
+    if let _ = _snippetsVC {
+      return
+    }
+    self.presentSnippetsControllerWithScratch()
+    // if let _ = self._interactiveSpaceController()._blinkMenu {
+    //   self.toggleQuickActionsAction()
+    // }
+  }
+
+  private func _toggleQuickActionActionWith(receiver: SpaceController) {
+    if let menu = _blinkMenu {
+      _blinkMenu = nil
+      UIView.animate(withDuration: 0.15) {
+        menu.alpha = 0
+      } completion: { _ in
+        menu.removeFromSuperview()
+      }
+    } else {
+      let menu = BlinkMenu()
+      self.view.addSubview(menu.tapToCloseView)
+      
+      var ids: [BlinkActionID] = []
+      ids.append(contentsOf:  [.snippets, .tabClose, .tabCreate])
+      
+      if DeviceInfo.shared().hasCorners {
+        ids.append(contentsOf:  [.layoutMenu])
+      }
+      ids.append(contentsOf:  [.toggleLayoutLock, .toggleGeoTrack])
+      menu.delegate = receiver;
+      menu.build(withIDs: ids, andAppearance: [:])
+      _blinkMenu = menu
+      self.view.addSubview(menu)
+      let size = self.view.frame.size;
+      let menuSize = menu.layout(for: size)
+      
+      let finalMenuFrame = CGRect(x: size.width * 0.5 - menuSize.width * 0.5, y: _overlay.frame.maxY - menuSize.height - 20, width: menuSize.width, height: menuSize.height)
+      
+      menu.frame = CGRect(origin: CGPoint(x: finalMenuFrame.minX, y: _overlay.frame.maxY + 10), size: finalMenuFrame.size);
+      
+      UIView.animate(withDuration: 0.25) {
+        menu.frame = finalMenuFrame
+      }
+    }
+  }
+  
+  func _interactiveSpaceController() -> SpaceController {
+    if let shadowWin = ShadowWindow.shared,
+       self.view.window == shadowWin,
+       let mainScreenSession = _activeSessions()
+          .first(where: {$0.role == .windowApplication }),
+       let delegate = mainScreenSession.scene?.delegate as? SceneDelegate
+    {
+      return delegate.spaceController
+    }
+    return self
+  }
+  
+  @objc func toggleQuickActionsAction() {
+    _interactiveSpaceController()
+      ._toggleQuickActionActionWith(receiver: self)
+  }
+  
+  @objc func toggleGeoTrack() {
+    if GeoManager.shared().traking {
+      GeoManager.shared().stop()
+      return
+    }
+
+    let manager = CLLocationManager()
+    let status = manager.authorizationStatus
+    
+    switch status  {
+    case .authorizedAlways, .authorizedWhenInUse: break
+    case .restricted:
+      showAlert(msg: "Geo services are restricted on this device.")
+      return
+    case .denied:
+      showAlert(msg: "Please allow Blink.app to use geo in Settings.app.")
+      return
+    case .notDetermined:
+      GeoManager.shared().authorize()
+      return
+    @unknown default:
+      return
+    }
+    
+    GeoManager.shared().start()
+  }
+  
+  @objc func _geoTrackStateChanged() {
+    self.view.setNeedsLayout()
+  }
+  
+  @objc func showWhatsNewAction() {
+    if let shadowWindow = ShadowWindow.shared,
+      view.window == shadowWindow {
+
+      _ = currentDevice?.view?.webView.resignFirstResponder()
+
+      let spCtrl = shadowWindow.windowScene?.windows.first?.rootViewController as? SpaceController
+      spCtrl?.showWhatsNewAction()
+
+      return
+    }
+
+    DispatchQueue.main.async {
+      self.currentTerm()?.resignInput()
+      WhatsNewInfo.setNewVersion()
+
+      let urlString = XCConfig.infoPlistWhatsNewGithubURL()
+
+      if let url = URL(string: urlString) {
+        let redirectURL = url.customerTierURL()
+        var request = URLRequest(url: redirectURL)
+        request.httpMethod = "HEAD"
+
+        URLSession.shared.dataTask(with: request) { _, response, error in
+          if error == nil,
+             let httpResponse = response as? HTTPURLResponse,
+             httpResponse.statusCode == 302,
+             let finalURL = response?.url {
+            blink_openurl(finalURL)
+          } else {
+            // Fallback if we cannot get the current announcement
+            blink_openurl(URL(string: "https://github.com/blinksh/blink/discussions/categories/announcements")!)
+          }
+        }.resume()
+      }
     }
   }
   
@@ -949,6 +1163,7 @@ extension SpaceController {
 
     _spaceControllerAnimating = true
     _viewportsController.setViewControllers([term], direction: direction, animated: animated) { (didComplete) in
+      term.resumeIfNeeded()
       self._currentKey = term.meta.key
       self._displayHUD()
       self._attachInputToCurrentTerm()
@@ -986,7 +1201,8 @@ extension SpaceController {
   
 }
 
-extension SpaceController: CommandsHUDViewDelegate {
+// MARK: CommandsHUDDelegate
+extension SpaceController: CommandsHUDDelegate {
   @objc func currentTerm() -> TermController? {
     if let currentKey = _currentKey {
       return SessionRegistry.shared[currentKey]
@@ -995,4 +1211,67 @@ extension SpaceController: CommandsHUDViewDelegate {
   }
   
   @objc func spaceController() -> SpaceController? { self }
+}
+
+// MARK: SnippetContext
+
+extension SpaceController: SnippetContext {
+  
+  func _presentSnippetsController(receiver: SpaceController, openScratch: Bool = false) {
+    do {
+      self.view.window?.makeKeyAndVisible()
+      let ctrl = try SnippetsViewController.create(context: receiver, transitionFrame: _blinkMenu?.bounds)
+      ctrl.pendingOpenScratch = openScratch
+      DispatchQueue.main.async {
+        ctrl.view.frame = self.view.bounds
+        ctrl.willMove(toParent: self)
+        self.view.addSubview(ctrl.view)
+        self.addChild(ctrl)
+        ctrl.didMove(toParent: self)
+        self._snippetsVC = ctrl
+        self._isSnipsInputModeActive = true
+      }
+    } catch {
+      self.showAlert(msg: "Could not display Snips: \(error)")
+    }
+  }
+
+  func presentSnippetsController() {
+    _interactiveSpaceController()._presentSnippetsController(receiver: self)
+  }
+
+  func presentSnippetsControllerWithScratch() {
+    _interactiveSpaceController()._presentSnippetsController(receiver: self, openScratch: true)
+  }
+  
+  func _dismissSnippetsController(ctrl: SpaceController) {
+    ctrl.presentedViewController?.dismiss(animated: true)
+    ctrl._snippetsVC?.willMove(toParent: nil)
+    ctrl._snippetsVC?.view.removeFromSuperview()
+    ctrl._snippetsVC?.removeFromParent()
+    ctrl._snippetsVC?.didMove(toParent: nil)
+    ctrl._snippetsVC = nil
+    ctrl._isSnipsInputModeActive = false
+  }
+  
+  func dismissSnippetsController() {
+    _dismissSnippetsController(ctrl: _interactiveSpaceController())
+    self.focusOnShellAction()
+  }
+  
+  func providerSnippetReceiver() -> (any SnippetReceiver)? {
+    self.focusOnShellAction()
+    return self.currentDevice
+  }
+
+}
+
+// MARK: SceneIntent handlers
+extension SpaceController {
+  @objc func runShellSessionIntent(command: String = "") {
+    DispatchQueue.main.sync {
+      self._newShellAction(command: command)
+    }
+  }
+
 }

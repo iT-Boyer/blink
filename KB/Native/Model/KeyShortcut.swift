@@ -63,8 +63,27 @@ class KeyShortcut: ObservableObject, Codable, Identifiable {
   
   var title: String { action.title }
   
+  var isCleared: Bool { input.isEmpty && modifiers.isEmpty }
+
+  var isInDefaultCommandList: Bool {
+    guard case .command(let cmd) = action else { return false }
+    return KeyShortcut.defaultList.contains {
+      if case .command(let defaultCmd) = $0.action { return defaultCmd == cmd }
+      return false
+    }
+  }
+
+  static func defaultFor(_ shortcut: KeyShortcut) -> KeyShortcut? {
+    guard case .command(let cmd) = shortcut.action else { return nil }
+    return defaultList.first {
+      if case .command(let defaultCmd) = $0.action { return defaultCmd == cmd }
+      return false
+    }
+  }
+
   var description: String {
-    
+    if isCleared { return "None" }
+
     var res = modifiers.toSymbols()
     
     switch input {
@@ -76,8 +95,40 @@ class KeyShortcut: ObservableObject, Codable, Identifiable {
       res += KeyCode.up.symbol
     case UIKeyCommand.inputDownArrow:
       res += KeyCode.down.symbol
+    case UIKeyCommand.inputHome:
+      res += KeyCode.home.symbol
+    case UIKeyCommand.inputEnd:
+      res += KeyCode.end.symbol
+    case UIKeyCommand.inputPageUp:
+      res += KeyCode.pageUp.symbol
+    case UIKeyCommand.inputPageDown:
+      res += KeyCode.pageDown.symbol
     case UIKeyCommand.inputEscape:
       res += KeyCode.escape.symbol
+    case UIKeyCommand.f1:
+      res += KeyCode.f1.symbol
+    case UIKeyCommand.f2:
+      res += KeyCode.f2.symbol
+    case UIKeyCommand.f3:
+      res += KeyCode.f3.symbol
+    case UIKeyCommand.f4:
+      res += KeyCode.f4.symbol
+    case UIKeyCommand.f5:
+      res += KeyCode.f5.symbol
+    case UIKeyCommand.f6:
+      res += KeyCode.f6.symbol
+    case UIKeyCommand.f7:
+      res += KeyCode.f7.symbol
+    case UIKeyCommand.f8:
+      res += KeyCode.f8.symbol
+    case UIKeyCommand.f9:
+      res += KeyCode.f9.symbol
+    case UIKeyCommand.f10:
+      res += KeyCode.f10.symbol
+    case UIKeyCommand.f11:
+      res += KeyCode.f11.symbol
+    case UIKeyCommand.f12:
+      res += KeyCode.f12.symbol
     case " ":
       res += KeyCode.space.symbol
     case "\r":
@@ -133,29 +184,40 @@ class KeyShortcut: ObservableObject, Codable, Identifiable {
     self.init(action: action, modifiers: modifiers, input: input)
   }
   
+  static var snippetsShowShortcut: KeyShortcut {
+    KeyShortcut(.snippetsShow, [.command, .shift], ",")
+  }
+
+  static var scratchShowShortcut: KeyShortcut {
+    KeyShortcut(.scratchShow, [.command, .shift], ".")
+  }
+
   static var defaultList: [KeyShortcut] {
     [
       KeyShortcut(.clipboardCopy, .command, "c"),
+      KeyShortcut(.clipboardCopyRaw, [.command, .shift], "c"),
       KeyShortcut(.clipboardPaste, .command, "v"),
-      
+
       KeyShortcut(.windowNew, [.command, .shift], "t"),
       KeyShortcut(.windowClose, [.command, .shift], "w"),
       KeyShortcut(.windowFocusOther, [.command], "o"),
-      
+
       KeyShortcut(.tabNew, .command, "t"),
       KeyShortcut(.tabClose, .command, "w"),
       KeyShortcut(.tabNext, [.command, .shift], "]"),
       KeyShortcut(.tabNext, [.command, .shift], UIKeyCommand.inputRightArrow),
       KeyShortcut(.tabPrev, [.command, .shift], "["),
       KeyShortcut(.tabPrev, [.command, .shift], UIKeyCommand.inputLeftArrow),
-      
+
       KeyShortcut(.tabMoveToOtherWindow, [.command, .shift], "o"),
-      
-      KeyShortcut(.zoomIn, .command, "+"),
+
+      KeyShortcut(.zoomIn, [.command, .shift], "="),
       KeyShortcut(.zoomOut, .command, "-"),
       KeyShortcut(.zoomReset, .command, "="),
-      
-      KeyShortcut(.configShow, [.command], ","),
+
+      KeyShortcut(.configShow, .command, ","),
+      Self.snippetsShowShortcut,
+      Self.scratchShowShortcut
     ]
   }
 }

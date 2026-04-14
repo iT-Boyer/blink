@@ -55,7 +55,7 @@ public class SSHAgentKey {
 //  var expiration: Int
   public let signer: Signer
   public let name: String
-  
+
   init(_ key: Signer, named: String, constraints: [SSHAgentConstraint]? = nil) {
     self.signer = key
     self.name = named
@@ -76,7 +76,7 @@ public class SSHAgent {
   private class AgentCtxt {
     weak var agent: SSHAgent?
     weak var client: SSHClient?
-    
+
     init(agent: SSHAgent, client: SSHClient) {
       self.agent = agent
       self.client = client
@@ -86,7 +86,7 @@ public class SSHAgent {
   public func linkTo(agent: SSHAgent) {
     self.superAgent = agent
   }
-  
+
   public func attachTo(client: SSHClient) {
     let agentCtxt = AgentCtxt(agent: self, client: client)
     contexts.append(agentCtxt)
@@ -118,22 +118,22 @@ public class SSHAgent {
 
       return Int32(replyData.count)
     }
-    
+
     ssh_set_agent_callback(client.session, cb, ctxt)
   }
 
-  public func loadKey(_ key: Signer, aka name: String, constraints: [SSHAgentConstraint]? = nil) -> Bool {
+  public func loadKey(_ key: Signer, aka name: String, constraints: [SSHAgentConstraint]? = nil) {
     let cKey = SSHAgentKey(key, named: name, constraints: constraints)
-    // TODO: check constraints
-    for k in ring {
+    for (x, k) in ring.enumerated() {
       if cKey.name == k.name {
-        return false
+        // Replace the key
+        ring[x] = cKey
+        return
       }
     }
     ring.append(cKey)
-    return true
   }
-  
+
   public func removeKey(_ name: String) -> Signer? {
     if let idx = ring.firstIndex(where: { $0.name == name }) {
       let key = ring.remove(at: idx)
@@ -141,6 +141,10 @@ public class SSHAgent {
     } else {
       return nil
     }
+  }
+
+  public func clear() {
+    ring = []
   }
 
   func request(_ message: Data, context: SSHAgentRequestType, client: SSHClient) throws -> Data {
@@ -151,12 +155,14 @@ public class SSHAgent {
           var respType = SSHAgentResponseType.answerIdentities.rawValue
           let preamble = Data(bytes: &respType, count: MemoryLayout<CChar>.size) +
             Data(bytes: &keys, count: MemoryLayout<UInt32>.size)
-          
+
           return ring.reduce(preamble) { $0 + $1 }
         case .requestSignature:
-          let signature = try encodedSignature(message, for: client)
+          guard let signature = try encodedSignature(message, for: client) else {
+            throw SSHKeyError.general(title: "Could not find proposed key")
+          }
           var respType = SSHAgentResponseType.responseSignature.rawValue
-          
+
           return Data(bytes: &respType, count: MemoryLayout<CChar>.size)
             + signature
 //        default:
@@ -165,38 +171,35 @@ public class SSHAgent {
   }
 
   func encodedRing() throws -> [Data] {
-    (try ring.map { (try $0.signer.publicKey.encode()) + SSHEncode.data(from: $0.signer.comment ?? "") }) +
-      (try superAgent?.encodedRing() ?? [])
+    (try superAgent?.encodedRing() ?? []) +
+      (try ring.map { (try $0.signer.publicKey.encode()) + SSHEncode.data(from: $0.name) })
   }
 
-  func encodedSignature(_ message: Data, for client: SSHClient) throws -> Data {
+  func encodedSignature(_ message: Data, for client: SSHClient) throws -> Data? {
 
     var msg = message
     let keyBlob = SSHDecode.bytes(&msg)
     let data = SSHDecode.bytes(&msg)
     let flags = SSHDecode.uint32(&msg)
 
-    do {
-      guard let key = lookupKey(blob: keyBlob) else {
-        throw SSHKeyError.general(title: "Could not find proposed key")
-      }
-      
-      let algorithm: String? = SigDecodingAlgorithm(rawValue: Int8(flags)).algorithm(for: key.signer)
+    if let signature = try superAgent?.encodedSignature(message, for: client) {
+      return signature
+    }
+
+    guard let key = lookupKey(blob: keyBlob) else {
+      return nil
+    }
+
+    let algorithm: String? = SigDecodingAlgorithm(rawValue: Int8(flags)).algorithm(for: key.signer)
 
       // Enforce constraints
-      try key.constraints?.forEach {
-        if !$0.enforce(useOf: key, by: client) { throw SSHKeyError.general(title: "Denied operation by constraint: \($0.name).") }
-      }
-
-      let signature = try key.signer.sign(data, algorithm: algorithm)
-      
-      return SSHEncode.data(from: signature)
-    } catch {
-      guard let superAgent = self.superAgent else {
-        throw error
-      }
-      return try superAgent.encodedSignature(message, for: client)
+    try key.constraints?.forEach {
+      if !$0.enforce(useOf: key, by: client) { throw SSHKeyError.general(title: "Denied operation by constraint: \($0.name).") }
     }
+
+    let signature = try key.signer.sign(data, algorithm: algorithm)
+
+    return SSHEncode.data(from: signature)
   }
 
   fileprivate func lookupKey(blob: Data) -> SSHAgentKey? {
@@ -235,7 +238,7 @@ extension SSHAgent {
 
         let reply = SSHEncode.data(from: UInt32(replyData.count)) + replyData
         let dd = reply.withUnsafeBytes { DispatchData(bytes: $0) }
-        
+
         return stream.write(dd, max: dd.count)
       }.sink(
         receiveCompletion: { c in
@@ -282,12 +285,12 @@ public enum SSHEncode {
   public static func data(from str: String) -> Data {
     self.data(from: UInt32(str.count)) + (str.data(using: .utf8) ?? Data())
   }
-  
+
   public static func data(from int: UInt32) -> Data {
     var val: UInt32 = UInt32(int).bigEndian
     return Data(bytes: &val, count: MemoryLayout<UInt32>.size)
   }
-  
+
   public static func data(from bytes: Data) -> Data {
     self.data(from: UInt32(bytes.count)) + bytes
   }

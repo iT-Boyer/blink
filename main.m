@@ -31,9 +31,14 @@
 
 #import <UIKit/UIKit.h>
 #import "AppDelegate.h"
+#import <Foundation/Foundation.h>
+#import <Blink-Swift.h>
+
+#include "ios_patches.h"
 
 int main(int argc, char * argv[]) {
   @autoreleasepool {
+    __blink_ios_patches();
     return UIApplicationMain(argc, argv, nil, NSStringFromClass([AppDelegate class]));
   }
 }

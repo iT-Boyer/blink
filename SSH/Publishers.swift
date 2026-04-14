@@ -29,7 +29,6 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-import Atomics
 import Combine
 import Foundation
 import LibSSH
@@ -52,7 +51,6 @@ extension Publisher {
         do {
           return try operation(p)
         } catch SSHError.again {
-          // Run the other mode?
           RunLoop.current.run(mode: libSSHBlockMode, before: Date(timeIntervalSinceNow: 0.5))
           //CFRunLoopRunInMode(libSSHBlockMode, 0.5, true)
           Swift.print("Retrying..")

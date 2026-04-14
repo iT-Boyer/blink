@@ -42,6 +42,9 @@ NS_ASSUME_NONNULL_BEGIN
 + (NSString *) infoPlistFullCloudID;
 + (NSString *) infoPlistGroupID;
 + (NSString *) infoPlistFullGroupID;
++ (NSString *) infoPlistWhatsNewURL;
++ (NSString *) infoPlistWhatsNewGithubURL;
++ (NSString *) infoPlistConversionOpportunityURL;
 
 @end
 

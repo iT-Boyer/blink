@@ -40,7 +40,7 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 
-#import "BKDefaults.h"
+#import "BLKDefaults.h"
 #import "BKHosts.h"
 #import "BKPubKey.h"
 #import "SSHSession.h"
@@ -217,7 +217,7 @@ static void kbd_callback(const char *name, int name_len,
   
   if (!_options.user) {
     // If no user provided, use the default
-    _options.user = [[BKDefaults defaultUserName] UTF8String];
+    _options.user = [[BLKDefaults defaultUserName] UTF8String];
   }
   
   NSMutableArray *command_args = [[NSMutableArray alloc] init];
@@ -453,7 +453,7 @@ static void kbd_callback(const char *name, int name_len,
 - (void)ssh_login:(NSArray *)ids to:(struct sockaddr *)addr port:(int)port user:(const char *)user timeout:(int)timeout error:(NSError **)error
 {
   char *userauthlist = NULL;
-  int auth_type;
+  int auth_type = 0;
   
   // Set supported auth_type from server
   do {

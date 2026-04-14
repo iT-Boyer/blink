@@ -33,7 +33,7 @@ import SwiftUI
 
 fileprivate struct CardRow: View {
   let key: BKPubKey
-  let currentKey: String
+  let isChecked: Bool
   
   var body: some View {
     HStack {
@@ -42,29 +42,30 @@ fileprivate struct CardRow: View {
         Text(key.keyType ?? "").font(.footnote)
       }.contentShape(Rectangle())
       Spacer()
-      Checkmark(checked: key.id == currentKey)
+      Checkmark(checked: isChecked)
     }.contentShape(Rectangle())
   }
 }
 
 struct KeyPickerView: View {
-  @Binding var currentKey: String
+  @Binding var currentKey: [String]
   @EnvironmentObject private var _nav: Nav
   @State private var _list: [BKPubKey] = BKPubKey.all()
+  let multipleSelection: Bool
   
   var body: some View {
     List {
       HStack {
         Text("None")
         Spacer()
-        Checkmark(checked: currentKey.isEmpty || currentKey == "None")
+        Checkmark(checked: currentKey.isEmpty)
       }
       .contentShape(Rectangle())
       .onTapGesture {
         _selectKey("")
       }
       ForEach(_list, id: \.tag) { key in
-        CardRow(key: key, currentKey: currentKey)
+        CardRow(key: key, isChecked: currentKey.contains { key.id == $0 })
           .onTapGesture {
             _selectKey(key.id)
           }
@@ -72,10 +73,28 @@ struct KeyPickerView: View {
     }
     .listStyle(InsetGroupedListStyle())
     .navigationTitle("Select a Key")
+    .onAppear {
+      // Make sure the key selection can only be based on the canonical list.
+      currentKey = currentKey.filter { key in _list.contains(where: { $0.id == key }) }
+    }
   }
   
   private func _selectKey(_ key: String) {
-    currentKey = key
-    _nav.navController.popViewController(animated: true)
+    if multipleSelection {
+      if key.isEmpty {
+        currentKey = []
+      } else if let idx = currentKey.firstIndex(of: key) {
+        currentKey.remove(at: idx)
+      } else {
+        currentKey.append(key)
+      }
+    } else {
+      if key.isEmpty {
+        currentKey = []
+      } else {
+        currentKey = [key]
+      }
+      _nav.navController.popViewController(animated: true)
+    }
   }
 }

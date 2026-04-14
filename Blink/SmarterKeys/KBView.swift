@@ -43,6 +43,8 @@ class KBView: UIView {
   private let _indicatorRight = UIView()
   private var _timer: Timer? = nil
   private var _repeatingKeyView: KBKeyView? = nil
+  private var _commandPressTimestamp: TimeInterval = 0
+  //private var _glassEffectView: UIVisualEffectView?
   
   var repeatingSequence: String? = nil
   
@@ -114,12 +116,40 @@ class KBView: UIView {
     
     _indicatorLeft.backgroundColor = UIColor.blue.withAlphaComponent(0.45)
     _indicatorRight.backgroundColor = UIColor.orange.withAlphaComponent(0.45)
+    
+    // // Setup glass material effect for iOS 26+ to handle transparency issues
+    // if #available(iOS 26.0, *) {
+    //   _setupGlassMaterialEffect()
+    // }
 
   }
   
   required init?(coder: NSCoder) {
     fatalError("init(coder:) has not been implemented")
   }
+  
+  // @available(iOS 26.0, *)
+  // private func _setupGlassMaterialEffect() {
+  //   // Create a glass material effect that adapts to background changes
+  //   // Use systemThinMaterial for better contrast while maintaining glass effect
+  //   let glassEffect = UIVisualEffectView(effect: UIBlurEffect(style: .systemThinMaterial))
+  //   glassEffect.translatesAutoresizingMaskIntoConstraints = false
+  //   _glassEffectView = glassEffect
+    
+  //   // Insert the glass effect behind all other views
+  //   insertSubview(glassEffect, at: 0)
+    
+  //   // Make the glass effect fill the entire keyboard view
+  //   NSLayoutConstraint.activate([
+  //     glassEffect.leadingAnchor.constraint(equalTo: leadingAnchor),
+  //     glassEffect.trailingAnchor.constraint(equalTo: trailingAnchor),
+  //     glassEffect.topAnchor.constraint(equalTo: topAnchor),
+  //     glassEffect.bottomAnchor.constraint(equalTo: bottomAnchor)
+  //   ])
+    
+  //   // Set a subtle background color for better contrast
+  //   backgroundColor = UIColor.systemBackground.withAlphaComponent(0.1)
+  // }
   
   func _updateSections() {
     _leftSection.views.forEach { $0.removeFromSuperview() }
@@ -146,10 +176,22 @@ class KBView: UIView {
       _scrollViewLeftBorder.backgroundColor = UIColor.separator.withAlphaComponent(0.45)
       _scrollViewRightBorder.backgroundColor = UIColor.separator.withAlphaComponent(0.45)
     }
+    
+    // // Update glass effect for iOS 26+ when trait collection changes
+    // if #available(iOS 26.0, *), let glassEffect = _glassEffectView {
+    //   // The system material will automatically adapt to the new trait collection
+    //   // but we can ensure it's properly positioned
+    //   glassEffect.frame = bounds
+    // }
   }
   
   override func layoutSubviews() {
     super.layoutSubviews()
+    
+    // // Update glass effect frame for iOS 26+
+    // if #available(iOS 26.0, *), let glassEffect = _glassEffectView {
+    //   glassEffect.frame = bounds
+    // }
    
     let strictSpace = !traits.isHKBAttached && traits.hasSuggestions
     self.kbSizes = kbDevice.sizesFor(portrait: traits.isPortrait)
@@ -285,7 +327,7 @@ class KBView: UIView {
         return
       }
       
-      view.key.sound.playIfPossible()
+      UIDevice.current.playInputClick()
       view.keyDelegate.keyViewTriggered(keyView: view, value: view.currentValue)
     }
   }
@@ -379,24 +421,42 @@ extension KBView: KBKeyViewDelegate {
     if keyView !== _repeatingKeyView {
       stopRepeats()
     }
-    
+
     defer { turnOffUntracked() }
-    
+
     guard let keyInput = keyInput
     else {
       return
     }
-    
+
+    // Handle command buttons (hideKB, etc.) - send directly as commands
+    if value.isCommand, let commandName = value.input {
+      keyInput.onCommand(commandName)
+      return
+    }
+
     let keyCode = value.keyCode
     var keyId = keyCode.id
     keyId += ":\(value.text)"
-    
+
     var flags = traits.modifierFlags
     if keyInput.trackingModifierFlags.contains(.shift) {
       flags.insert(.shift)
     }
-    
-    if let input = value.input,
+
+    // For shifted characters like < and >, we need to shift the modifier to match "Shift+,"
+    var inputForMatching = value.input
+    if case .text(let ch) = value {
+      if ch == "<" {
+        flags.insert(.shift)
+        inputForMatching = ","
+      } else if ch == ">" {
+        flags.insert(.shift)
+        inputForMatching = "."
+      }
+    }
+
+    if let input = inputForMatching,
       flags.rawValue > 0,
       let (cmd, responder) = keyInput.matchCommand(input: input, flags: flags),
       let action = cmd.action  {
@@ -418,6 +478,8 @@ extension KBView: KBKeyViewDelegate {
       stopRepeats()
     }
   }
+ 
+  
   
   func keyViewTouchesBegin(keyView: KBKeyView, touches: Set<UITouch>) {
     guard
@@ -425,6 +487,18 @@ extension KBView: KBKeyViewDelegate {
     else {
       return
     }
+    
+    if keyView.currentValue == .cmd {
+      if touch.timestamp - _commandPressTimestamp > 0.5 {
+        _commandPressTimestamp = touch.timestamp
+      } else {
+        UIApplication.shared.sendAction(#selector(SpaceController.toggleQuickActionsAction), to: nil, from: nil, for: nil)
+         _commandPressTimestamp = 0
+      }
+    } else {
+        _commandPressTimestamp = 0
+    }
+    
     
     for recognizer in touch.gestureRecognizers ?? [] {
       guard

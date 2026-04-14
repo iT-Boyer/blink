@@ -30,11 +30,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 import Foundation
-import NonStdIO
 import ArgumentParser
 import BlinkCode
 import Network
 
+import ios_system
 
 struct BrowseCommand: NonStdIOCommand {
   static var configuration = CommandConfiguration(
@@ -47,7 +47,7 @@ struct BrowseCommand: NonStdIOCommand {
     """
 
   @OptionGroup var verboseOptions: VerboseOptions
-  var io = NonStdIO.standart
+  var io = NonStdIO.standard
 
   @Argument(
     help: "Path to connect to or http(s) vscode like editor url",
@@ -66,7 +66,7 @@ struct BrowseCommand: NonStdIOCommand {
     
     let url = url ?? URL(string: "https://google.com")!
     DispatchQueue.main.async {
-      session.device.view.addBrowserWebView(url, agent: "", injectUIO: false)
+      session.device?.view?.addBrowserWebView(url, agent: "", injectUIO: false)
     }
   }
 }
@@ -78,7 +78,7 @@ public func browse_main(argc: Int32, argv: Argv) -> Int32 {
   setvbuf(thread_stdout, nil, _IONBF, 0)
   setvbuf(thread_stderr, nil, _IONBF, 0)
 
-  let io = NonStdIO.standart
+  let io = NonStdIO.standard
   io.in_ = InputStream(file: thread_stdin)
   io.out = OutputStream(file: thread_stdout)
   io.err = OutputStream(file: thread_stderr)

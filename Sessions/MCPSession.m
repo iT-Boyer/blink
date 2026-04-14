@@ -70,38 +70,39 @@
     _cmdQueue = dispatch_queue_create("mcp.command.queue", DISPATCH_QUEUE_SERIAL);
     _sshQueue = dispatch_queue_create("mcp.sshclients.queue", DISPATCH_QUEUE_SERIAL);
     [self setActiveSession];
-//    ios_setMiniRoot([BlinkPaths documents]);
-//    [self updateAllowedPaths];
-//    [[NSFileManager defaultManager] changeCurrentDirectoryPath:[BlinkPaths documents]];
-//    ios_setContext((__bridge void*)self);
-//
-    thread_stdout = nil;
-    thread_stdin = nil;
-    thread_stderr = nil;
-    
-    ios_setStreams(_stream.in, _stream.out, _stream.err);
+    device.readlineListener = self;
+
+    NSString *initialPrompt = [WhatsNewInfo mustDisplayInitialPrompt];
+    if (initialPrompt) {
+      [device writeOutLn:initialPrompt];
+    }
   }
-  
+
   return self;
 }
 
 - (void)executeWithArgs:(NSString *)args {
   dispatch_async(_cmdQueue, ^{
     [self setActiveSession];
+    ios_setStreams(_stream.in, _stream.out, _stream.out);
+
     NSString *homePath = [BlinkPaths homePath];
     ios_setMiniRoot(homePath);
-    [[NSFileManager defaultManager] changeCurrentDirectoryPath:homePath];
     [self updateAllowedPaths];
-//    ios_setContext((__bridge void*)self);
-//    
-    thread_stdout = nil;
-    thread_stdin = nil;
-    thread_stderr = nil;
-    
-    ios_setStreams(_stream.in, _stream.out, _stream.err);
-    
+
     // We are restoring mosh session if possible first.
     if ([@"mosh" isEqualToString:self.sessionParams.childSessionType] && self.sessionParams.hasEncodedState) {
+      MoshParams *moshParams = (MoshParams *)self.sessionParams.childSessionParams;
+
+      BlinkMosh *mosh = [[BlinkMosh alloc] initWithMcpSession: self device:_device andParams:moshParams];
+      _childSession = mosh;
+      [_childSession executeAttachedWithArgs:@""];
+      _childSession = nil;
+      if (self.sessionParams.hasEncodedState) {
+        return;
+      }
+    }
+    if ([@"mosh1" isEqualToString:self.sessionParams.childSessionType] && self.sessionParams.hasEncodedState) {
       MoshSession *mosh = [[MoshSession alloc] initWithDevice:_device andParams:self.sessionParams.childSessionParams];
       mosh.mcpSession = self;
       _childSession = mosh;
@@ -110,6 +111,11 @@
       if (self.sessionParams.hasEncodedState) {
         return;
       }
+    }
+    NSString *initialCommand = self.sessionParams.initialCommand;
+    if (initialCommand.length > 0) {
+      [self enqueueCommand:initialCommand];
+      return;
     }
     #if TARGET_OS_MACCATALYST
       BKHosts *localhost = [BKHosts withHost:@"localhost"];
@@ -120,24 +126,11 @@
         [_device prompt:@"blink> " secure:NO shell:YES];
       }
     #else
-    [_device prompt:@"blink> " secure:NO shell:YES];
+    if (_device) {
+      [_device prompt:@"blink> " secure:NO shell:YES];
+    }
     #endif
   });
-}
-
-/*!
- @brief Enqueue a new command coming from a x-callback-url. After completing successfully return to the
- @discussion Accepts the x-callback-url and the x-success URL to call after a successful command completion
- @param cmd Command to be executed
- @param xCallbackSuccessUrl Success URL of the original application (like Shortcuts) to return to after reunning the command
-*/
-- (void)enqueueXCallbackCommand:(NSString *)cmd xCallbackSuccessUrl:(NSURL *)xCallbackSuccessUrl {
-  [self enqueueCommand:cmd];
-  
-  dispatch_async(_cmdQueue, ^{
-    blink_openurl(xCallbackSuccessUrl);
-  });
-  
 }
 
 - (void)enqueueCommand:(NSString *)cmd {
@@ -145,6 +138,9 @@
 }
 
 - (void)enqueueCommand:(NSString *)cmd skipHistoryRecord: (BOOL) skipHistoryRecord {
+  // NOTE This shouldn't be done this way. The MCP should read from, but not write to the input.
+  // The terminal device in this case is acting like a shell, which is not fully wrong, but I don't like it.
+  // The terminal view is also receiving requests for "what's being typed" in order to then do Completion, etc...
   if (_cmdStream) {
     [_device writeInDirectly:[NSString stringWithFormat: @"%@\n", cmd]];
     return;
@@ -164,8 +160,6 @@
     [HistoryObj appendIfNeededWithCommand:cmdline];
   }
   
-  
-  
   NSString *mayBeURLString = [cmdline stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
   
   NSURL *mayBeHttpURL = [NSURL URLWithString:mayBeURLString];
@@ -176,18 +170,7 @@
   
   NSArray *arr = [cmdline componentsSeparatedByString:@" "];
   NSString *cmd = arr[0];
-  
-  
-  [self setActiveSession];
-  
-//  ios_setContext((__bridge void*)self);
-  
-  thread_stdout = nil;
-  thread_stdin = nil;
-  thread_stderr = nil;
 
-  ios_setStreams(_stream.in, _stream.out, _stream.err);
-  
   if ([cmd isEqualToString:@"exit"]) {
     dispatch_async(dispatch_get_main_queue(), ^{
       [self.delegate sessionFinished];
@@ -196,8 +179,20 @@
     return NO;
   }
   
+  // NOTE We don't have a passthrough for all of it.
+  // This should be done at a different function
+  setenv("LC_ALL", "UTF-8", 1);
+  setenv("LC_CTYPE", "UTF-8", 1);
+  setlocale(LC_ALL, "UTF-8");
+  setlocale(LC_CTYPE, "UTF-8");
+  
   if ([cmd isEqualToString:@"mosh"]) {
     [self _runMoshWithArgs:cmdline];
+    if (self.sessionParams.hasEncodedState) {
+      return NO;
+    }
+  } else if ([cmd isEqualToString:@"mosh1"]) {
+    [self _runMosh1WithArgs:cmdline];
     if (self.sessionParams.hasEncodedState) {
       return NO;
     }
@@ -205,28 +200,50 @@
     [self _runSSHWithArgs:cmdline];
   } else if ([cmd isEqualToString:@"ssh-copy-id"]) {
     [self _runSSHCopyIDWithArgs:cmdline];
-  } else {
-    
-    _currentCmd = cmdline;
-    thread_stdout = nil;
-    thread_stdin = nil;
-    thread_stderr = nil;
-    
-    _cmdStream = [_device.stream duplicate];
+  } else if (![cmd isEqualToString:@""]) {
+    // Manually set raw mode for some commands, as we cannot receive control any other way.
+    [_device closeReadline];
+    if ([cmd isEqualToString:@"less"] || [cmd isEqualToString:@"vim"]) {
+      self.device.rawMode = true;
+      self.device.autoCR = TRUE;
+    }
     [self setActiveSession];
-    ios_setStreams(_cmdStream.in, _cmdStream.out, _cmdStream.err);
-    
-    setenv("COLUMNS", [@(_device->win.ws_col) stringValue].UTF8String, 1);
-    setenv("LINES", [@(_device->win.ws_row) stringValue].UTF8String, 1);
+    [self updateAllowedPaths];
 
+    _currentCmd = cmdline;
+
+    _cmdStream = [_device.stream duplicate];
+    ios_setStreams(_cmdStream.in, _cmdStream.out, _cmdStream.out);
+    // ios_system provides a get command that returns a "tty" instead of an open.  We can control it here.
+    FILE* tty = [_cmdStream openTTY];
+    ios_settty(tty);
+    ios_setWindowSize((int)self.device.cols, (int)self.device.rows, _sessionUUID.UTF8String);
+
+    pid_t _pid = ios_fork();
     ios_system(cmdline.UTF8String);
     _currentCmd = nil;
+    ios_waitpid(_pid);
+    ios_releaseThreadId(_pid);
+    self.device.autoCR = FALSE;
+
+    fclose(tty);
+    tty = nil;
     [_cmdStream close];
     _cmdStream = nil;
     _sshClients = [[NSMutableArray alloc] init];
+
+    setenv("LC_ALL", "UTF-8", 1);
+    setenv("LC_CTYPE", "UTF-8", 1);
+    setlocale(LC_ALL, "UTF-8");
+    setlocale(LC_CTYPE, "UTF-8");
   }
   
-  [_device prompt:@"blink> " secure:NO shell:YES];
+  if (_device) {
+    // TODO At the moment this is just a prompt instead of a readline. This needs to be fixed.
+    // And bc of that, we need to check that there is a device. The MCP may be killed, but the loop here may still
+    // try to write to the device.
+    [_device prompt:@"blink> " secure:NO shell:YES];
+  }
   
   return YES;
 }
@@ -255,7 +272,38 @@
 
 - (void)updateAllowedPaths
 {
-  NSArray<NSString *>* allowedPaths = [BlinkPaths cleanedSymlinksInHomeDirectory];
+  NSFileManager *fm = [NSFileManager defaultManager];
+  NSMutableArray<NSString *> *allowedPaths = [[NSMutableArray alloc] init];
+  NSString *documentsPath = [BlinkPaths documentsPath];
+  NSString *iCloudDriveDocumentsPath = [BlinkPaths iCloudDriveDocuments];
+
+  if (documentsPath != NULL) {
+    [allowedPaths addObject: documentsPath];
+    NSString *resolvedPath = [fm destinationOfSymbolicLinkAtPath:[BlinkPaths documentsPath] error:nil];
+    if (resolvedPath != NULL) {
+      [allowedPaths addObject: resolvedPath];
+    }
+  }
+
+  if (iCloudDriveDocumentsPath != NULL) {
+    [allowedPaths addObject: iCloudDriveDocumentsPath];
+    NSString *resolvedPath = [fm destinationOfSymbolicLinkAtPath:[BlinkPaths iCloudDriveDocuments] error:nil];
+    if (resolvedPath != NULL) {
+      [allowedPaths addObject: iCloudDriveDocumentsPath];
+    }
+  }
+
+  NSArray<NSString *> *allowedLocations = [[BookmarkedLocationsManager default] getLocationPaths];
+  for (NSString *path in allowedLocations) {
+    char resolvedPath[PATH_MAX];
+    if (realpath([path fileSystemRepresentation], resolvedPath)) {
+      NSString *stringResolvingPath = [NSString stringWithUTF8String:resolvedPath];
+      [allowedPaths addObject: stringResolvingPath];
+    } else {
+      [allowedPaths addObject:path];
+    }
+  }
+  
   ios_setAllowedPaths(allowedPaths);
 }
 
@@ -276,6 +324,23 @@
 {
   self.sessionParams.childSessionParams = [[MoshParams alloc] init];
   self.sessionParams.childSessionType = @"mosh";
+  BlinkMosh *mosh = [[BlinkMosh alloc] initWithMcpSession: self device:_device andParams:self.sessionParams.childSessionParams];
+  //MoshSession *mosh = [[MoshSession alloc] initWithDevice:_device andParams:self.sessionParams.childSessionParams];
+  //mosh.mcpSession = self;
+  _childSession = mosh;
+  
+  // duplicate args
+  NSString *str = [NSString stringWithFormat:@"%@", args];
+  [_childSession executeAttachedWithArgs:str];
+  
+  _childSession = nil;
+}
+
+- (void)_runMosh1WithArgs:(NSString *)args
+{
+  self.sessionParams.childSessionParams = [[MoshParams alloc] init];
+  self.sessionParams.childSessionType = @"mosh1";
+  //BlinkMosh *mosh = [[BlinkMosh alloc] initWithMcpSession: self device:_device andParams:self.sessionParams.childSessionParams];
   MoshSession *mosh = [[MoshSession alloc] initWithDevice:_device andParams:self.sessionParams.childSessionParams];
   mosh.mcpSession = self;
   _childSession = mosh;
@@ -298,6 +363,9 @@
 
 - (void)sigwinch
 {
+  [self setActiveSession];
+  ios_setWindowSize((int)self.device.cols, (int)self.device.rows, _sessionUUID.UTF8String);
+  
   [_childSession sigwinch];
   dispatch_sync(_sshQueue, ^{
     for (id client in _sshClients) {
@@ -306,6 +374,7 @@
   });
 }
 
+// TODO It would be nice if this could be re-used (interrupt children, interrupt yourself).
 - (void)kill
 {
   if (_sshClients.count > 0) {
@@ -313,117 +382,95 @@
       for (id client in _sshClients) {
         [client kill];
       }
-      [_device writeIn:@"\x03"];
     });
     
     return;
   } else if (_childSession) {
     [_childSession kill];
-  } else { 
+  } else if (_cmdStream) {
+    [self setActiveSession];
     ios_kill();
   }
   
   ios_closeSession(_sessionUUID.UTF8String);
-  
-  [_device writeIn:@"\x03"];
-  if (_device.stream.in) {
-    fclose(_device.stream.in);
-    _device.stream.in = NULL;
-  }
+  [_device close];
+  _device = NULL;
 }
 
 - (void)suspend
 {
+  [self setActiveSession];
   [_childSession suspend];
 }
 
-- (BOOL)handleControl:(NSString *)control
+- (void)handleControl:(NSString *)control
 {
   NSString *ctrlC = @"\x03";
   NSString *ctrlD = @"\x04";
   
   if (_childSession) {
-    if ([control isEqualToString:ctrlC] || [control isEqualToString:ctrlD]) {
-      [_device closeReadline];
-    }
-    
     if (_sshClients.count > 0) {
-      [_device closeReadline];
       dispatch_sync(_sshQueue, ^{
         for (id client in _sshClients) {
+          // TODO We need the kill here because of the Proxy connections, but if we simplify, SSH will just be a
+          // regular child session.
           [client kill];
         }
       });
+    } else {
+      // Send kill signal to child session.
+      [_childSession kill];
     }
-    return [_childSession handleControl:control];
-  }
-  
-  if ([control isEqualToString:ctrlC] || [control isEqualToString:ctrlD]) {
-    if (_currentCmd) {
-      if ([_device rawMode]) {
-        return NO;
+    return;
+  } else if (_currentCmd) {
+    if ([control isEqualToString:ctrlD]) {
+      // We give a chance to the session to capture the new stdin, as it may have changed.
+      [self setActiveSession];
+      if (_cmdStream != NULL) {
+        [_cmdStream close];
+        _cmdStream = NULL;
+        _cmdStream = [_device.stream duplicate];
       }
+      ios_setStreams(_cmdStream.in, _cmdStream.out, _cmdStream.out);
+      return;
+    }
+    
+    if ([control isEqualToString:ctrlC]) {
       if (_sshClients.count > 0) {
-        [_device closeReadline];
         dispatch_sync(_sshQueue, ^{
           for (id client in _sshClients) {
             [client kill];
           }
         });
       } else {
-        if ([control isEqualToString:ctrlD]) {
-          [_device closeReadline];
-          [_cmdStream closeIn];
-          return NO;
+        if (_tokioSignals) {
+          [_tokioSignals signalCtrlC];
+          _tokioSignals = nil;
+        } else {
+          [self setActiveSession];
+          ios_kill();
         }
-        [self setActiveSession];
-//        ios_setStreams(_cmdStream.in, _cmdStream.out, _cmdStream.err);
-        ios_kill();
       }
-      return YES;
-    } else {
-      if ([_device rawMode]) {
-        return YES;
-      }
-      return NO;
+      return;
     }
-    return YES;
   }
 
-  return NO;
+  return;
 }
-
 
 - (void)setActiveSession {
-//  thread_stdout = nil;
-//    thread_stdin = nil;
-//    thread_stderr = nil;
-//
-//    FILE * savedStdOut = stdout;
-//    FILE * savedStdErr = stderr;
-//    FILE * savedStdIn = stdin;
-//
-//    if (_cmdStream) {
-//      stdout = _cmdStream.out;
-//      stderr = _cmdStream.err;
-//      stdin = _cmdStream.in;
-//    } else {
-//      stdout = _stream.out;
-//      stderr = _stream.err;
-//      stdin = _stream.in;
-//  //    ios_setStreams(_stream.in, _stream.out, _stream.err);
-//    }
-    
-    ios_switchSession(_sessionUUID.UTF8String);
-    ios_setContext((__bridge void*)self);
-    
-//    stdout = savedStdOut;
-//    stderr = savedStdErr;
-//    stdin = savedStdIn;
-//
-  
-  
+  // Need to reset all thread variables, including context!
+  // This fixes "segmentation faults" after a few subsequent session - new command cycles.
+  thread_context = NULL;
+  ios_switchSession(_sessionUUID.UTF8String);
+  ios_setContext((__bridge void*)self);
+  thread_stdout = NULL;
+  thread_stdin = NULL;
+  thread_stderr = NULL;
 }
 
+- (void)lineSubmitted:(NSString *)line { 
+  [self enqueueCommand:line];
+}
 
 @end

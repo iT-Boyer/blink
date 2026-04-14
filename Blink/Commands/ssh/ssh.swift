@@ -35,14 +35,13 @@ import SSH
 import Combine
 import Dispatch
 import ios_system
-import NonStdIO
 
 @_cdecl("blink_ssh_main")
 public func blink_ssh_main(argc: Int32, argv: Argv) -> Int32 {
   setvbuf(thread_stdin, nil, _IONBF, 0)
   setvbuf(thread_stdout, nil, _IONBF, 0)
   setvbuf(thread_stderr, nil, _IONBF, 0)
-
+  
   let session = Unmanaged<MCPSession>.fromOpaque(thread_context).takeUnretainedValue()
   let cmd = BlinkSSH(mcp: session)
   return cmd.start(argc, argv: argv.args(count: argc))
@@ -53,6 +52,7 @@ public func blink_ssh_main(argc: Int32, argv: Argv) -> Int32 {
   
   var outstream: Int32
   var instream: Int32
+  var errstream: Int32
   let device: TermDevice
   var isTTY: Bool
   var stdout = OutputStream(file: thread_stdout)
@@ -60,7 +60,7 @@ public func blink_ssh_main(argc: Int32, argv: Argv) -> Int32 {
   private var _mcp: MCPSession;
 
   var exitCode: Int32 = 0
-  var cancellableBag: Set<AnyCancellable> = []
+  var connectionCancellable: AnyCancellable?
   let currentRunLoop = RunLoop.current
   var command: SSHCommand?
   var stream: SSH.Stream?
@@ -69,14 +69,18 @@ public func blink_ssh_main(argc: Int32, argv: Argv) -> Int32 {
   var remoteTunnels: [PortForwardInfo] = []
   var proxyThread: Thread?
   var socks: [OptionalBindAddressInfo] = []
+  var timer: Timer?
 
   var outStream: DispatchOutputStream?
   var inStream: DispatchInputStream?
+  var errStream: DispatchOutputStream?
   
   init(mcp: MCPSession) {
     _mcp = mcp;
+    // Owed by ios_system, so beware to dup before using.
     self.outstream = fileno(thread_stdout)
     self.instream = fileno(thread_stdin)
+    self.errstream = fileno(thread_stderr)
     self.device = tty()
     self.isTTY = ios_isatty(self.instream) != 0
     super.init()
@@ -99,14 +103,14 @@ public func blink_ssh_main(argc: Int32, argv: Argv) -> Int32 {
       print("\(message)", to: &stderr)
       return -1
     }
-    
+
     let host: BKSSHHost
     let hostName: String
     let config: SSHClientConfig
     do {
-      let commandHost = try cmd.bkSSHHost()
-      host = try BKConfig().bkSSHHost(cmd.hostAlias, extending: commandHost)
-      hostName = host.hostName ?? cmd.hostAlias
+      let resolved = try cmd.resolveHost()
+      host = resolved.host
+      hostName = resolved.hostName
       config = try SSHClientConfigProvider.config(host: host, using: device)
     } catch {
       print("Configuration error - \(error)", to: &stderr)
@@ -148,39 +152,68 @@ public func blink_ssh_main(argc: Int32, argv: Argv) -> Int32 {
         return -1
       }
     } else {
+      // Disable CM on -W, this way we attach it to the main connection only
+      let useControlMaster = (cmd.stdioHostAndPort != nil) ? .no : (host.controlMaster ?? .no)
+      
       connect = SSHPool.dial(
         hostName,
         with: config,
-        withControlMaster: host.controlMaster ?? .no,
+        withControlMaster: useControlMaster,
         withProxy: { [weak self] in
           guard let self = self
           else {
             return
           }
           self._mcp.setActiveSession()
-          self.executeProxyCommand(command: $0, sockIn: $1, sockOut: $2)
+          Self.executeProxyCommand(command: $0, sockIn: $1, sockOut: $2)
         })
     }
+    
+    var environment: [String: String] = .init(minimumCapacity: host.sendEnv?.count ?? 0)
+    
+    host.sendEnv?.forEach({ env in
+      // SKIP nil values
+      if let value = getenv(env) {
+        environment[env] = String(cString: value)
+      }
+    })
 
-    let environment: [String:String] = host.sendEnv?.reduce([String:String]()) { (result, env) in
-      var result = result
-      result[env] = String(cString: getenv(env))
-      return result
-    } ?? [:]
-
-    connect.flatMap { conn -> SSHConnection in
+    connectionCancellable = connect.flatMap { conn -> SSHConnection in
       self.connection = conn
+
+      if let banner = conn.issueBanner,
+         !banner.isEmpty {
+        print(banner, to: &self.stdout)
+      }
+
+      conn.handleSessionException = { error in
+        print("Exception received \(error)", to: &self.stderr)
+        self.kill()
+      }
 
       if cmd.startsSession {
         if let addr = conn.clientAddressIP() {
           print("Connected to \(addr)", to: &self.stdout)
         }
 
+        // AgentForwardingPrompt
+        var sendAgent = host.forwardAgent ?? false
+        // Add forwarded keys after the connection is established, to make sure they won't be used
+        // during login.
+        // TODO: We do not need to change the sendAgent flag here, but ssh_config was not adding it.
+        // Let configs change and do later.
+        if let bkHost = BKHosts.withHost(cmd.hostAlias),
+           let agent = conn.agent {
+          if self.loadAgentForwardKeys(bkHost: bkHost, agent: agent) {
+            sendAgent = true
+          }
+        }
+
         return self.startInteractiveSessions(conn,
                                              command: host.remoteCommand,
                                              requestTTY: host.requestTty ?? .auto,
                                              withEnvVars: environment,
-                                             sendAgent: host.forwardAgent ?? false)
+                                             sendAgent: sendAgent)
       }
       return .just(conn)
     }
@@ -206,19 +239,18 @@ public func blink_ssh_main(argc: Int32, argv: Argv) -> Int32 {
         self.kill()
       }
     })
-    .store(in: &cancellableBag)
 
-    awaitRunLoop(currentRunLoop)
+    awaitRunLoop()
 
     stream?.cancel()
     outStream?.close()
     inStream?.close()
-    // Dispatch streams need a cycle to close.
-    RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
-
-    // Need to get rid of the stream because the channel needs a cycle to be closed.
-    self.stream = nil
-
+    errStream?.close()
+    stream = nil
+    outStream = nil
+    inStream = nil
+    errStream = nil
+    
     if let conn = self.connection, cmd.blocks {
       if cmd.startsSession { SSHPool.deregister(shellOn: conn) }
       forwardTunnels.forEach { SSHPool.deregister(localForward:  $0, on: conn) }
@@ -226,10 +258,12 @@ public func blink_ssh_main(argc: Int32, argv: Argv) -> Int32 {
       socks.forEach { SSHPool.deregister(socksBindAddress: $0, on: conn) }
     }
     
+    connectionCancellable = nil
+    self.connection = nil
     return exitCode
   }
 
-  private func executeProxyCommand(command: String, sockIn: Int32, sockOut: Int32) {
+  static func executeProxyCommand(command: String, sockIn: Int32, sockOut: Int32) {
     /* Prepare /dev/null socket for the stderr redirection */
     let devnull = open("/dev/null", O_WRONLY);
     if devnull == -1 {
@@ -273,31 +307,36 @@ public func blink_ssh_main(argc: Int32, argv: Argv) -> Int32 {
       session = conn.requestExec(command: command, withPTY: pty,
                                  withEnvVars: envVars,
                                  withAgentForwarding: sendAgent)      
-    } else {      
+    } else {
       session = conn.requestInteractiveShell(withPTY: pty,
                                              withEnvVars: envVars,
                                              withAgentForwarding: sendAgent)
     }
 
     return session.tryMap { s in
-      let outs = DispatchOutputStream(stream: self.outstream)
-      let ins = DispatchInputStream(stream: self.instream)
+      let outs = DispatchOutputStream(stream: dup(self.outstream))
+      let ins = DispatchInputStream(stream: dup(self.instream))
+      let errs = DispatchOutputStream(stream: dup(self.errstream))
 
-      s.handleCompletion = {
+      s.handleCompletion = { [weak self] in
         // Once finished, exit.
-        self.kill()
+        self?.kill()
         return
       }
-      s.handleFailure = { error in
+      s.handleFailure = { [weak self] error in
+        guard let self = self else {
+          return
+        }
         self.exitCode = -1
         print("Interactive Shell error. \(error)", to: &self.stderr)
         self.kill()
         return
       }
 
-      s.connect(stdout: outs, stdin: ins)
+      s.connect(stdout: outs, stdin: ins, stderr: errs)
       self.outStream = outs
       self.inStream = ins
+      self.errStream = errs
       SSHPool.register(shellOn: conn)
       self.stream = s
       return conn
@@ -308,7 +347,7 @@ public func blink_ssh_main(argc: Int32, argv: Argv) -> Int32 {
     guard let tunnel = command.stdioHostAndPort else {
       return .just(conn)
     }
-    
+
     return conn.requestForward(to: tunnel.bindAddress, port: Int32(tunnel.port),
                           // Just informative.
                           from: "stdio", localPort: 22)
@@ -318,17 +357,19 @@ public func blink_ssh_main(argc: Int32, argv: Argv) -> Int32 {
         let inStream = DispatchInputStream(stream: dup(self.instream))
         s.connect(stdout: outStream, stdin: inStream)
 
-        s.handleCompletion = {
+        s.handleCompletion = { [weak self] in
+          print("Stdio Tunnel completed")
           SSHPool.deregister(allTunnelsForConnection: conn)
+          self?.kill()
           //SSHPool.deregister(runningCommand: command, on: conn)
         }
-        s.handleFailure = { error in
+        s.handleFailure = { [weak self] error in
+          print("Stdio Tunnel completed")
           SSHPool.deregister(allTunnelsForConnection: conn)
+          self?.kill()
           //SSHPool.deregister(runningCommand: command, on: conn)
         }
         
-        // TODO Check this out again. The tunnel is already stored, so we can close the process.
-        self.kill()
         return conn
       }.eraseToAnyPublisher()
   }
@@ -426,7 +467,31 @@ public func blink_ssh_main(argc: Int32, argv: Argv) -> Int32 {
       .map { conn }
       .eraseToAnyPublisher()    
   }
-  
+
+  private func loadAgentForwardKeys(bkHost: BKHosts, agent: SSHAgent) -> Bool {
+    var constraints: [SSHAgentConstraint]? = nil
+    let agentForwardPrompt = BKAgentForward(UInt32(bkHost.agentForwardPrompt?.intValue ?? 0))
+
+    if agentForwardPrompt == BKAgentForwardConfirm {
+      constraints = [SSHAgentUserPrompt()]
+    } else if agentForwardPrompt == BKAgentForwardYes {
+      constraints = []
+    } else {
+      return false
+    }
+
+    if constraints != nil {
+      let _allIdentities = BKPubKey.all()
+      for keyName in bkHost.agentForwardKeys {
+        if let signer = _allIdentities.signerWithID(keyName) {
+          agent.loadKey(signer, aka: keyName, constraints: constraints)
+        }
+      }
+    }
+
+    return true
+  }
+
   @objc public func sigwinch() {
     var c: AnyCancellable?
     c = stream?
@@ -443,9 +508,24 @@ public func blink_ssh_main(argc: Int32, argv: Argv) -> Int32 {
     // Cancelling here makes sure the flows are cancelled.
     // Trying to do it at the runloop has the issue that flows may continue running.
     print("Kill received")
-    cancellableBag = []
+    connectionCancellable = nil
+    
+    awake()
+  }
 
-    awake(runLoop: currentRunLoop)
+  func awaitRunLoop() {
+    let timer = Timer(timeInterval: TimeInterval(INT_MAX), repeats: true) { _ in
+      print("timer")
+    }
+    self.timer = timer
+    self.currentRunLoop.add(timer, forMode: .default)
+    CFRunLoopRun()
+  }
+
+  func awake() {
+    let cfRunLoop = self.currentRunLoop.getCFRunLoop()
+    self.timer?.invalidate()
+    CFRunLoopStop(cfRunLoop)
   }
 
   deinit {

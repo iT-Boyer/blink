@@ -34,6 +34,7 @@
 @interface BlinkPaths : NSObject
 
 + (NSString *) homePath;
++ (NSURL *)homeURL;
 
 + (NSString *) groupContainerPath;
 + (NSString *) documentsPath;
@@ -41,10 +42,19 @@
 
 // ~/.blink
 + (NSString *) blink;
+// ~/.blink-build
++ (NSString *)blinkBuild;
+// ~/.blink/agents
++ (NSString *)blinkAgentSettings;
+
 // ~/.ssh
 + (NSString *) ssh;
 
 + (NSURL *) blinkURL;
++ (NSURL *) blinkAgentSettingsURL;
++ (NSURL *) blinkBuildURL;
++ (NSURL *) blinkBuildTokenURL;
++ (NSURL *)blinkBuildStagingMarkURL;
 + (NSURL *) sshURL;
 + (NSURL *) blinkSSHConfigFileURL;
 + (NSURL *) blinkGlobalSSHConfigFileURL;
@@ -60,14 +70,16 @@
 + (NSString *) historyFile;
 + (NSString *) knownHostsFile;
 
++ (NSURL *) localSnippetsLocationURL;
++ (NSURL *) iCloudSnippetsLocationURL;
+
++ (NSURL *)fileProviderReplicatedURL;
++ (NSURL *)fileProviderRemotesURLWithRecreate:(BOOL)recreate;
+
 + (NSURL *)fileProviderErrorLogURL;
 + (NSURL *)blinkCodeErrorLogURL;
 
 + (void)linkICloudDriveIfNeeded;
 + (void)linkDocumentsIfNeeded;
-
-+ (NSArray<NSString *> *)cleanedSymlinksInHomeDirectory;
-+ (void)migrateToHomeAtGroupContainer;
-
 
 @end

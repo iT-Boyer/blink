@@ -110,6 +110,17 @@ public class Local : Translator {
     }.eraseToAnyPublisher()
   }
 
+  public func join(_ path: String) throws -> Translator {
+    var absPath = (path as NSString).standardizingPath
+    if !path.starts(with: "/") {
+      absPath = (current as NSString).appendingPathComponent(absPath)
+    }
+    self.fileType = .typeUnknown
+    self.current = absPath
+
+    return self
+  }
+
   func fileAttributes(atPath path: String) -> AnyPublisher<FileAttributes, Error> {
     return fileManager().tryMap { fm -> FileAttributes in
       let nsPath = (path as NSString)
@@ -134,8 +145,7 @@ public class Local : Translator {
       }.eraseToAnyPublisher()
   }
 
-  //    // TODO Change permissions to more generic open options
-  public func create(name: String, flags: Int32, mode: mode_t = S_IRWXU) -> AnyPublisher<File, Error> {
+  public func create(name: String, mode: mode_t = S_IRWXU) -> AnyPublisher<File, Error> {
     if fileType != .typeDirectory {
       return fail(msg: "Not a directory.")
     }
@@ -148,7 +158,7 @@ public class Local : Translator {
         throw LocalFileError(msg: "Could not create file.")
       }
 
-      return try LocalFile(at: absPath, flags: flags)
+      return try LocalFile(at: absPath, flags: O_WRONLY|O_CREAT|O_TRUNC)
     }.eraseToAnyPublisher()
   }
 

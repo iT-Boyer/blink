@@ -35,20 +35,25 @@ import Foundation
 
 @objc class Migrator : NSObject {
   @objc static func perform() {
-    Self.perform(steps: [MigrationToAppGroup()])
+    Self.perform(steps: [MigrationToAppGroup(),
+                         MigrationAddSnippetsShortcut(),
+                         MigrationFileProviderReplicatedExtension(),
+                         MigrationStyleFromDefaults(),
+                         MigrationWipeSessionRegistry()
+                        ])
   }
-  
+
   static func perform(steps: [MigrationStep]) {
     let migratorFileURL = URL(fileURLWithPath: BlinkPaths.groupContainerPath()).appendingPathComponent(".migrator")
-    
+
     let currentVersionString = try? String(contentsOf: migratorFileURL, encoding: .utf8)
     var currentVersion = Int(currentVersionString ?? "0") ?? 0
-    
+
     steps.forEach { step in
       guard step.version > currentVersion else {
         return
       }
-      
+
       do {
         try step.execute()
         currentVersion = step.version

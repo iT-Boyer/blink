@@ -15,9 +15,9 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "9827125D262E4BDB00F883FA"
-               BuildableName = "BlinkFileProviderUI.appex"
-               BlueprintName = "BlinkFileProviderUI"
+               BlueprintIdentifier = "BD9EA1C82718E19000874007"
+               BuildableName = "BlinkFileProviderExtensionUI.appex"
+               BlueprintName = "BlinkFileProviderExtensionUI"
                ReferencedContainer = "container:Blink.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -43,6 +43,28 @@
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES">
       <Testables>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "D22277D42A26115300D4C708"
+               BuildableName = "BlinkSnippetsTests.xctest"
+               BlueprintName = "BlinkSnippetsTests"
+               ReferencedContainer = "container:Blink.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "BD9513E92B4F5A7A00A7BEBE"
+               BuildableName = "BlinkFileProviderTests.xctest"
+               BlueprintName = "BlinkFileProviderTests"
+               ReferencedContainer = "container:Blink.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction
@@ -74,6 +96,7 @@
       savedToolIdentifier = ""
       useCustomWorkingDirectory = "NO"
       debugDocumentVersioning = "YES"
+      askForAppToLaunch = "Yes"
       launchAutomaticallySubstyle = "2">
       <BuildableProductRunnable
          runnableDebuggingMode = "0">

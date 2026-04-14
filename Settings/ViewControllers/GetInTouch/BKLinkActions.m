@@ -49,13 +49,15 @@
   }
 }
 
-+ (void)sendToGitHub:(NSString *)location
-{
-  NSURL *githubURL = [NSURL URLWithString:@"https://github.com/blinksh"];
++ (void)sendToGitHub:(NSString *)location {
+  NSURLComponents *components = [NSURLComponents componentsWithString:@"https://github.com/blinksh"];
+    
   if (location) {
-    githubURL = [githubURL URLByAppendingPathComponent:location];
+    NSString *fullURLString = [NSString stringWithFormat:@"%@/%@", components.string, location];
+    components = [NSURLComponents componentsWithString:fullURLString];
   }
-  blink_openurl(githubURL);
+   
+  blink_openurl(components.URL);
 }
 
 + (void)sendToAppStore
@@ -83,6 +85,16 @@
 
 + (void)sendToDiscordSupport {
   NSURL *url = [NSURL URLWithString:@"https://discord.gg/uATT2ad"];
+  blink_openurl(url);
+}
+
++ (void)sendToGithubDiscussions {
+  NSURL *url = [NSURL URLWithString:@"https://github.com/blinksh/blink/discussions"];
+  blink_openurl(url);
+}
+
++ (void)sendToDocumentation {
+  NSURL *url = [NSURL URLWithString:@"https://docs.blink.sh"];
   blink_openurl(url);
 }
 

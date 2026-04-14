@@ -32,12 +32,10 @@
 
 import Foundation
 import StoreKit
-
 import ArgumentParser
-
 import BlinkConfig
-import NonStdIO
 
+import ios_system
 
 struct SKStoreCmd: NonStdIOCommand {
   static var configuration = CommandConfiguration(
@@ -47,7 +45,7 @@ struct SKStoreCmd: NonStdIOCommand {
   )
   
   @OptionGroup var verboseOptions: VerboseOptions
-  var io = NonStdIO.standart
+  var io = NonStdIO.standard
 
   @Argument(
     help: "attribute"
@@ -58,7 +56,7 @@ struct SKStoreCmd: NonStdIOCommand {
   func run() throws {
     let sema = DispatchSemaphore(value: 0)
     
-    if attribute != "" {
+    if attribute != "blink-rules" {
       return
     }
     
@@ -93,7 +91,7 @@ public func skstore_main(argc: Int32, argv: Argv) -> Int32 {
   setvbuf(thread_stdout, nil, _IONBF, 0)
   setvbuf(thread_stderr, nil, _IONBF, 0)
 
-  let io = NonStdIO.standart
+  let io = NonStdIO.standard
   io.out = OutputStream(file: thread_stdout)
   io.err = OutputStream(file: thread_stderr)
   

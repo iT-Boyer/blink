@@ -91,7 +91,20 @@ extension Translator {
       copyElement(from: t, args: args)
     }.eraseToAnyPublisher()
   }
-  
+
+  public func copy(from t: Translator, newName: String, args: CopyArguments = CopyArguments()) -> CopyProgressInfoPublisher {
+    print("Copying as \(newName)")
+    return self.cloneWalkTo(newName)
+      .tryCatch { _ -> AnyPublisher<Translator, Error> in
+        return self.create(name: newName, mode: S_IRWXU)
+          .flatMap { $0.close() }
+          .flatMap { _ in self.cloneWalkTo(newName) }
+          .eraseToAnyPublisher()
+      }
+      .flatMap { $0.copyElement(from: t, args: args) }
+      .eraseToAnyPublisher()
+  }
+
   // Self can be a File or a directory.
   fileprivate func copyElement(from t: Translator, args: CopyArguments) -> CopyProgressInfoPublisher {
     return Just(t)
@@ -201,10 +214,10 @@ extension Translator {
 
     let fullFile: String
     let file: AnyPublisher<File, Error>
-    // If we are in a directory, we create the file, otherwise we open truncated.
+    // If we are a directory, we create the file. If we are a file, we open truncated.
     if self.isDirectory {
       fullFile = (self.current as NSString).appendingPathComponent(name)
-      file = self.create(name: name, flags: O_WRONLY, mode: S_IRWXU)
+      file = self.create(name: name, mode: S_IRWXU)
     } else {
       fullFile = self.current
       file = self.open(flags: O_WRONLY | O_TRUNC)

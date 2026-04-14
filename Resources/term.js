@@ -113,8 +113,9 @@ function term_setup(accessibilityEnabled) {
   t.onTerminalReady = function() {
     window.installKB(t, t.scrollPort_.screen_);
     term_setAutoCarriageReturn(true);
+    term_setClipboardWrite(false);
+
     t.setCursorVisible(true);
-    
     t.io.onTerminalResize = function(cols, rows) {
       _postMessage('sigwinch', {cols, rows});
       if (t.prompt) {
@@ -145,14 +146,18 @@ function term_setup(accessibilityEnabled) {
   t.decorate(document.getElementById('terminal'));
 }
 
-function term_init(accessibilityEnabled) {
+function term_init(accessibilityEnabled, lockdownMode) {
   term_setupDefaults();
   try {
     applyUserSettings();
     //    var bgColor = term_get('background-color');
     //    document.body.style.backgroundColor = bgColor;
     //    document.body.parentNode.style.backgroundColor = bgColor;
-    waitForFontFamily(term_setup);
+    if (lockdownMode) {
+      term_setup(accessibilityEnabled);
+    } else {
+      waitForFontFamily(term_setup);
+    }
   } catch (e) {
     _postMessage('alert', {
       title: 'Error',
@@ -333,6 +338,14 @@ function term_setFontFamily(name, fontSizeDetectionMethod) {
   term_set('font-family', name + ', "DejaVu Sans Mono"');
 }
 
+function term_setClipboardWrite(state) {
+  if (state === false) {
+    t.vt.enableClipboardWrite = false;
+  } else {
+    t.vt.enableClipboardWrite = true;
+  }
+}
+
 function term_appendUserCss(css) {
   var style = document.createElement('style');
 
@@ -368,7 +381,7 @@ function term_getCurrentSelection() {
   return {
     base: selection.baseNode.textContent,
     offset: selection.baseOffset,
-    text: t.getSelectionText() || "",
+    text: selection.toString() || "",
     rect,
   };
 }
